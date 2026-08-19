@@ -289,15 +289,19 @@ corepack pnpm --filter @pocketflow/web build
 
 ## 10. Definition of Done FR-01
 
-- [ ] User baru dapat register dengan email/password.
-- [ ] User dapat login kembali.
-- [ ] Auth0 mengembalikan user ke frontend.
-- [ ] Frontend mengirim JWT ke API.
-- [ ] API memvalidasi JWT.
-- [ ] API membuat profile user jika belum ada.
-- [ ] User dapat memilih starter envelope.
-- [ ] User dapat melewati onboarding.
-- [ ] Status onboarding tersimpan di D1.
-- [ ] User yang sudah selesai tidak mengulang onboarding.
-- [ ] User dapat melihat dashboard setelah login.
-- [ ] Tidak ada Auth0 Client Secret di frontend atau repository.
+- [v] User baru dapat register dengan email/password.
+- [v] User dapat login kembali.
+- [v] Auth0 mengembalikan user ke frontend.
+- [v] Frontend mengirim JWT ke API.
+- [v] API memvalidasi JWT.
+- [v] API membuat profile user jika belum ada.
+- [v] User dapat memilih starter envelope.
+- [v] User dapat melewati onboarding.
+- [v] Status onboarding tersimpan di D1.
+- [v] User yang sudah selesai tidak mengulang onboarding.
+- [v] User dapat melihat dashboard setelah login.
+- [v] Tidak ada Auth0 Client Secret di frontend atau repository.
+- [v] Verifikasi Auth0 Database Connection: email/password registration, duplicate-email message, login, and forgot-password flow.
+- [v] Verifikasi Auth0 Social Connections: Google and Apple login, including callback back to the configured frontend origin.
+
+Kode aplikasi FR-01 dan onboarding D1 sudah tersedia. Dua checklist terakhir tetap memerlukan pengujian di tenant Auth0 dan browser karena provider, database connection, email verification, dan password reset dikonfigurasi di luar repository.

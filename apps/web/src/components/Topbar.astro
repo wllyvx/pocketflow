@@ -3,7 +3,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787';
 ---
 
 <header class="flex items-start justify-between gap-5">
-  <div><p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Overview</strong></p><h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">Good morning, <span data-user-greeting>PocketFlow User</span> <span class="text-[21px] text-coral-500">✦</span></h1></div>
+  <div class="flex items-start gap-3"><button class="mobile-sidebar-open" data-sidebar-open type="button" aria-label="Open navigation">☰</button><div><p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Overview</strong></p><h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">Good morning, <span data-user-greeting>PocketFlow User</span> <span class="text-[21px] text-coral-500">✦</span></h1></div></div>
   <div class="flex items-center gap-5">
     <a class="flex items-center gap-1.5 text-[11px] text-[#8C97A2] no-underline" href={`${apiUrl}/health`}>API status <span class="h-1.5 w-1.5 rounded-full bg-[#48BD8E]"></span></a>
     <button class="relative border-0 bg-transparent p-1.5 text-xl text-[#7C8896]" type="button" aria-label="View notifications">♧<span class="absolute right-0.5 top-1.5 h-1.5 w-1.5 rounded-full bg-coral-500"></span></button>

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { onboardingSchema } from "@pocketflow/shared";
 import { createDb } from "./db/client";
 import { categories, envelopes, transactions, users } from "./db/schema";
@@ -12,6 +12,10 @@ type Bindings = {
   FRONTEND_ORIGIN?: string;
   RECEIPTS_BUCKET?: R2Bucket;
 };
+
+function isUniqueConstraintError(error: unknown) {
+  return error instanceof Error && /unique constraint|UNIQUE constraint/i.test(error.message);
+}
 
 const app = new Hono<{ Bindings: Bindings; Variables: AuthVariables }>();
 
@@ -58,16 +62,23 @@ app.get("/api/users/me", async (context) => {
 
   let user = await database.select().from(users).where(eq(users.auth0Id, auth0Id)).limit(1).then((rows) => rows[0]);
   if (!user) {
-    const inserted = await database.insert(users).values({
-      id: crypto.randomUUID(),
-      auth0Id,
-      email: context.get("email") ?? `${auth0Id}@users.invalid`,
-      name: context.get("name") ?? "PocketFlow User",
-      onboardingStatus: "pending",
-      createdAt: now,
-      updatedAt: now,
-    }).returning();
-    user = inserted[0];
+    try {
+      const inserted = await database.insert(users).values({
+        id: crypto.randomUUID(),
+        auth0Id,
+        email: context.get("email") ?? `${auth0Id}@users.invalid`,
+        name: context.get("name") ?? "PocketFlow User",
+        onboardingStatus: "pending",
+        createdAt: now,
+        updatedAt: now,
+      }).returning();
+      user = inserted[0];
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        return context.json({ success: false, error: { code: "DUPLICATE_EMAIL", message: "An account with this email already exists. Sign in with that account instead." } }, 409);
+      }
+      throw error;
+    }
   }
 
   return context.json({ success: true, data: user });
@@ -112,8 +123,7 @@ app.get("/api/onboarding", async (context) => {
     return context.json({ success: false, error: { code: "USER_NOT_FOUND", message: "User profile has not been provisioned." } }, 404);
   }
 
-  const needsDisplayName = user.name === "PocketFlow User";
-  return context.json({ success: true, data: { status: needsDisplayName ? "pending" : user.onboardingStatus, canSkip: needsDisplayName || user.onboardingStatus === "pending" } });
+  return context.json({ success: true, data: { status: user.onboardingStatus, canSkip: user.onboardingStatus === "pending" } });
 });
 
 app.post("/api/onboarding", async (context) => {
@@ -126,7 +136,7 @@ app.post("/api/onboarding", async (context) => {
   if (!user) {
     return context.json({ success: false, error: { code: "USER_NOT_FOUND", message: "Complete your profile setup first." } }, 404);
   }
-  if (user.onboardingStatus !== "pending" && user.name !== "PocketFlow User") {
+  if (user.onboardingStatus !== "pending") {
     return context.json({ success: false, error: { code: "ONBOARDING_COMPLETE", message: "Onboarding has already been completed." } }, 409);
   }
 
@@ -138,7 +148,7 @@ app.post("/api/onboarding", async (context) => {
   const status = body.data.skip ? "skipped" : "completed";
   if (!body.data.skip) {
     for (const name of body.data.starterEnvelopes) {
-      const category = await database.select().from(categories).where(eq(categories.name, name)).limit(1).then((rows) => rows[0]);
+      const category = await database.select().from(categories).where(and(eq(categories.userId, user.id), eq(categories.name, name))).limit(1).then((rows) => rows[0]);
       const categoryId = category?.id ?? crypto.randomUUID();
       if (!category) {
         await database.insert(categories).values({ id: categoryId, userId: user.id, name, type: "expense", createdAt: new Date(), updatedAt: new Date() });

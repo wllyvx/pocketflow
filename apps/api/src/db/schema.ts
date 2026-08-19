@@ -35,7 +35,7 @@ export const categories = sqliteTable("categories", {
   type: text("type").notNull(),
   icon: text("icon"),
   ...timestamps,
-});
+}, (table) => [uniqueIndex("categories_user_name").on(table.userId, table.name)]);
 
 export const envelopes = sqliteTable("envelopes", {
   id: text("id").primaryKey(),

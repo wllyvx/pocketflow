@@ -128,4 +128,21 @@ import '../styles/global.css';
     document.querySelectorAll('.nav-item, .mobile-item').forEach((navItem) => navItem.classList.remove('bg-coral-50', 'text-coral-600'));
     document.querySelectorAll(`[href="${href}"]`).forEach((navItem) => navItem.classList.add('bg-coral-50', 'text-coral-600'));
   }));
+
+  const sidebar = document.querySelector<HTMLElement>('[data-mobile-sidebar]');
+  const sidebarBackdrop = document.querySelector<HTMLElement>('[data-sidebar-backdrop]');
+  const setSidebarOpen = (isOpen: boolean) => {
+    sidebar?.classList.toggle('is-open', isOpen);
+    sidebarBackdrop?.classList.toggle('is-open', isOpen);
+    sidebarBackdrop?.setAttribute('aria-hidden', String(!isOpen));
+    document.body.classList.toggle('sidebar-open', isOpen);
+  };
+
+  document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebarOpen(true));
+  document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebarOpen(false));
+  sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
+  document.querySelectorAll('[data-mobile-sidebar] .nav-item').forEach((item) => item.addEventListener('click', () => setSidebarOpen(false)));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setSidebarOpen(false);
+  });
 </script>
