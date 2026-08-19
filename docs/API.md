@@ -95,6 +95,38 @@ For endpoints returning lists of resources, pagination details will be included 
     *   `403 Forbidden`: User does not have permission (should not occur for `/me`).
     *   `500 Internal Server Error`: An unexpected server error occurred.
 
+    #### GET /onboarding
+
+    *   **Description:** Returns the authenticated user's onboarding status.
+    *   **Response Body (200 OK):** `{ "success": true, "data": { "status": "pending", "canSkip": true } }`
+
+    #### POST /onboarding
+
+    *   **Description:** Completes onboarding, optionally creating starter envelopes, or skips it.
+    *   **Request Body:** `{ "skip": false, "starterEnvelopes": ["Groceries", "Transport", "Fun"] }`
+    *   **Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`, `409 Conflict`, `503 Service Unavailable`.
+
+### Dashboard
+
+#### GET /dashboard
+
+*   **Description:** Retrieves the authenticated user's dashboard summary, envelopes, and latest transactions.
+*   **Response Body (200 OK):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "availableToSpend": 0,
+        "monthlyIncome": 0,
+        "spent": 0,
+        "healthScore": 0,
+        "envelopes": [],
+        "transactions": []
+      }
+    }
+    ```
+*   **Status Codes:** `200 OK`, `401 Unauthorized`, `404 Not Found`.
+
 ### Budget Envelopes
 
 #### POST /envelopes

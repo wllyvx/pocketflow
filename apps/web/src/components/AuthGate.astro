@@ -1,0 +1,117 @@
+<div id="auth-gate" class="fixed inset-0 z-30 grid place-items-center bg-[#F5F6F2] p-5">
+  <div class="w-full max-w-[440px] rounded-[10px] bg-white p-8 shadow-[0_20px_60px_rgba(23,37,51,.12)]">
+    <p class="kicker">POCKETFLOW</p>
+    <h1 id="auth-title" class="font-display text-3xl font-semibold text-[#213043]">Your money, in rhythm.</h1>
+    <p id="auth-message" class="mt-3 text-sm leading-6 text-[#687586]">Checking your session...</p>
+    <div id="auth-error" class="mt-4 hidden rounded border border-[#F5C1B1] bg-coral-50 px-3 py-2 text-xs text-coral-600"></div>
+    <button id="auth-login" class="mt-7 hidden w-full rounded bg-coral-500 px-3 py-3 text-xs font-bold text-white" type="button">Log in or sign up <span class="ml-2 text-base">→</span></button>
+
+    <form id="onboarding-form" class="mt-7 hidden">
+      <fieldset class="border-0 p-0">
+        <legend class="text-sm font-bold text-[#354356]">Start with a few envelopes</legend>
+        <p class="mt-1 text-xs leading-5 text-[#82909D]">You can change these later. Choose up to five.</p>
+        <div class="mt-5 grid gap-2">
+          {['Groceries', 'Transport', 'Fun', 'Bills', 'Health'].map((name) => (
+            <label class="flex cursor-pointer items-center gap-3 rounded border border-[#E5EAE6] px-3 py-3 text-sm text-[#465468] has-[:checked]:border-[#F5C1B1] has-[:checked]:bg-coral-50">
+              <input class="starter-envelope accent-coral-500" type="checkbox" value={name} />
+              {name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <div class="mt-6 flex gap-3">
+        <button id="onboarding-skip" class="flex-1 rounded border border-[#DFE5E0] px-3 py-3 text-xs font-bold text-[#657386]" type="button">Skip</button>
+        <button class="flex-1 rounded bg-coral-500 px-3 py-3 text-xs font-bold text-white" type="submit">Continue <span class="ml-2 text-base">→</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  import { completeOnboarding, getCurrentUser, getDashboard, getOnboardingStatus } from '../lib/api-client';
+  import { getAuthClient } from '../lib/auth-client';
+
+  const gate = document.querySelector('#auth-gate');
+  const loginButton = document.querySelector('#auth-login');
+  const onboardingForm = document.querySelector('#onboarding-form') as HTMLFormElement | null;
+  const skipButton = document.querySelector('#onboarding-skip');
+  const message = document.querySelector('#auth-message');
+  const error = document.querySelector('#auth-error');
+  const title = document.querySelector('#auth-title');
+  const appShell = document.querySelector('#app-shell');
+
+  const showError = (value: unknown) => {
+    if (!error) return;
+    error.textContent = value instanceof Error ? value.message : 'Something went wrong. Please try again.';
+    error.classList.remove('hidden');
+  };
+
+  const showDashboard = (name: string, dashboard: Awaited<ReturnType<typeof getDashboard>>['data']) => {
+    appShell?.classList.remove('hidden');
+    document.dispatchEvent(new CustomEvent('pocketflow:dashboard-ready', { detail: dashboard }));
+    gate?.remove();
+    document.querySelector('[data-user-name]')?.replaceChildren(name);
+    document.querySelector('[data-user-greeting]')?.replaceChildren(name);
+  };
+
+  const finishOnboarding = async (token: string, skip: boolean) => {
+    const starterEnvelopes = skip
+      ? []
+      : Array.from(document.querySelectorAll<HTMLInputElement>('.starter-envelope:checked')).map((input) => input.value);
+    await completeOnboarding(token, { skip, starterEnvelopes });
+    window.location.reload();
+  };
+
+  const bootstrap = async () => {
+    const auth = await getAuthClient();
+    if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
+      await auth.handleRedirectCallback();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (!(await auth.isAuthenticated())) {
+      if (message) message.textContent = 'Log in to connect your PocketFlow account.';
+      loginButton?.classList.remove('hidden');
+      return;
+    }
+
+    const token = await auth.getTokenSilently();
+    const user = await getCurrentUser(token);
+    const onboarding = await getOnboardingStatus(token);
+    if (onboarding.data.status === 'pending') {
+      title?.replaceChildren('Welcome to PocketFlow.');
+      message?.replaceChildren('Pick a few starter envelopes, or skip to begin with an empty dashboard.');
+      onboardingForm?.classList.remove('hidden');
+      return;
+    }
+    const dashboard = await getDashboard(token);
+    showDashboard(user.data.name, dashboard.data);
+  };
+
+  loginButton?.addEventListener('click', async () => {
+    try {
+      await (await getAuthClient()).loginWithRedirect();
+    } catch (value) {
+      showError(value);
+    }
+  });
+
+  onboardingForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await finishOnboarding(await (await getAuthClient()).getTokenSilently(), false);
+    } catch (value) {
+      showError(value);
+    }
+  });
+
+  skipButton?.addEventListener('click', async () => {
+    try {
+      await finishOnboarding(await (await getAuthClient()).getTokenSilently(), true);
+    } catch (value) {
+      showError(value);
+    }
+  });
+
+  bootstrap().catch(showError);
+</script>

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `onboarding_status` text NOT NULL DEFAULT 'pending';

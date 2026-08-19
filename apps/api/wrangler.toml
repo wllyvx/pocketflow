@@ -2,14 +2,16 @@ name = "pocketflow-api"
 main = "src/index.ts"
 compatibility_date = "2026-08-19"
 
-[vars]
-DEV_AUTH_TOKEN = "local-dev-token"
+# Set these for deployed Auth0 JWT validation.
+# AUTH0_DOMAIN = "your-tenant.us.auth0.com"
+# AUTH0_AUDIENCE = "https://api.pocketflow.app"
+# FRONTEND_ORIGIN = "https://app.pocketflow.app"
 
 # Create the D1 database, then replace the placeholder before deployment.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "pocketflow-db"
-# database_id = "replace-with-your-d1-database-id"
+[[d1_databases]]
+binding = "DB"
+database_name = "pocketflow-db"
+database_id = "d766ecf3-4003-4990-b78e-d7f5f983c6ab"
 
 # Configure R2 after creating the bucket.
 # [[r2_buckets]]

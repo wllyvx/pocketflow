@@ -9,6 +9,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.24.1",
     "@pocketflow/shared": "workspace:*",
     "astro": "^5.12.0"
   },

@@ -3,10 +3,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787';
 ---
 
 <header class="flex items-start justify-between gap-5">
-  <div><p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Overview</strong></p><h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">Good morning, Alex <span class="text-[21px] text-coral-500">✦</span></h1></div>
+  <div><p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Overview</strong></p><h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">Good morning, <span data-user-greeting>PocketFlow User</span> <span class="text-[21px] text-coral-500">✦</span></h1></div>
   <div class="flex items-center gap-5">
     <a class="flex items-center gap-1.5 text-[11px] text-[#8C97A2] no-underline" href={`${apiUrl}/health`}>API status <span class="h-1.5 w-1.5 rounded-full bg-[#48BD8E]"></span></a>
     <button class="relative border-0 bg-transparent p-1.5 text-xl text-[#7C8896]" type="button" aria-label="View notifications">♧<span class="absolute right-0.5 top-1.5 h-1.5 w-1.5 rounded-full bg-coral-500"></span></button>
-    <button class="flex items-center gap-2 border-0 bg-transparent text-[11px] font-semibold text-[#334154]" type="button" aria-label="Open profile"><span class="grid h-[31px] w-[31px] place-items-center rounded-full bg-[#F5B494] text-[10px] font-bold text-[#603E39]">AM</span><span class="hidden sm:inline">Alex Morgan</span><span class="text-base text-[#9BA4AE]">⌄</span></button>
+    <button class="flex items-center gap-2 border-0 bg-transparent text-[11px] font-semibold text-[#334154]" type="button" aria-label="Open profile"><span class="grid h-[31px] w-[31px] place-items-center rounded-full bg-[#F5B494] text-[10px] font-bold text-[#603E39]">PF</span><span class="hidden sm:inline" data-user-name>PocketFlow User</span><span class="text-base text-[#9BA4AE]">⌄</span></button>
   </div>
 </header>

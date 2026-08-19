@@ -10,6 +10,7 @@ export const users = sqliteTable("users", {
   auth0Id: text("auth0_id").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
+  onboardingStatus: text("onboarding_status").notNull().default("pending"),
   ...timestamps,
 });
 

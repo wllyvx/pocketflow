@@ -13,7 +13,8 @@
   "dependencies": {
     "@pocketflow/shared": "workspace:*",
     "drizzle-orm": "^0.44.2",
-    "hono": "^4.7.11"
+    "hono": "^4.7.11",
+    "jose": "^6.2.9"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250813.0",
