@@ -1,0 +1,63 @@
+---
+import AddTransactionModal from '../components/AddTransactionModal.astro';
+import EnvelopeProgress from '../components/EnvelopeProgress.astro';
+import MobileNav from '../components/MobileNav.astro';
+import Sidebar from '../components/Sidebar.astro';
+import SpendingRhythm from '../components/SpendingRhythm.astro';
+import SummaryCards from '../components/SummaryCards.astro';
+import Topbar from '../components/Topbar.astro';
+import TransactionsPanel from '../components/TransactionsPanel.astro';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="PocketFlow personal finance dashboard" />
+    <title>Overview | PocketFlow</title>
+  </head>
+  <body>
+    <div class="flex min-h-screen">
+      <Sidebar />
+      <main class="mx-auto w-full max-w-[1280px] px-[52px] pb-[72px] pt-[42px] max-lg:px-[34px] max-[680px]:px-[18px] max-[680px]:pb-[92px] max-[680px]:pt-6" id="overview">
+        <Topbar />
+        <SummaryCards />
+        <EnvelopeProgress />
+        <section class="mt-11 grid grid-cols-[1.13fr_0.87fr] gap-[18px] max-lg:grid-cols-1">
+          <TransactionsPanel />
+          <SpendingRhythm />
+        </section>
+      </main>
+    </div>
+    <MobileNav />
+    <AddTransactionModal />
+  </body>
+</html>
+
+<script>
+  const modalBackdrop = document.querySelector('.modal-backdrop');
+  const openButton = document.querySelector('[aria-label="Add transaction"]');
+  const closeButton = document.querySelector('.modal-close');
+  const closeModal = () => {
+    modalBackdrop?.setAttribute('aria-hidden', 'true');
+  };
+
+  openButton?.addEventListener('click', () => {
+    modalBackdrop?.setAttribute('aria-hidden', 'false');
+  });
+  closeButton?.addEventListener('click', closeModal);
+  modalBackdrop?.addEventListener('click', (event) => {
+    if (event.target === modalBackdrop) closeModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeModal();
+  });
+
+  document.querySelectorAll('.nav-item, .mobile-item').forEach((item) => item.addEventListener('click', () => {
+    const href = item.getAttribute('href');
+    document.querySelectorAll('.nav-item, .mobile-item').forEach((navItem) => navItem.classList.remove('bg-coral-50', 'text-coral-600'));
+    document.querySelectorAll(`[href="${href}"]`).forEach((navItem) => navItem.classList.add('bg-coral-50', 'text-coral-600'));
+  }));
+</script>

@@ -1,0 +1,17 @@
+name = "pocketflow-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-19"
+
+[vars]
+DEV_AUTH_TOKEN = "local-dev-token"
+
+# Create the D1 database, then replace the placeholder before deployment.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "pocketflow-db"
+# database_id = "replace-with-your-d1-database-id"
+
+# Configure R2 after creating the bucket.
+# [[r2_buckets]]
+# binding = "RECEIPTS_BUCKET"
+# bucket_name = "pocketflow-receipts"

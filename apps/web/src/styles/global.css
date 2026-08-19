@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary-500: #4F46E5;
+    --color-primary-600: #4338CA;
+    --color-secondary-500: #10B981;
+    --color-secondary-600: #059669;
+    --color-accent-warning: #F59E0B;
+    --color-accent-danger: #EF4444;
+    --color-neutral-50: #F9FAFB;
+    --color-neutral-100: #F3F4F6;
+    --color-neutral-200: #E5E7EB;
+    --color-neutral-300: #D1D5DB;
+    --color-neutral-400: #9CA3AF;
+    --color-neutral-500: #6B7280;
+    --color-neutral-700: #374151;
+    --color-neutral-900: #111827;
+    --color-text-primary: var(--color-neutral-700);
+    --color-text-secondary: var(--color-neutral-500);
+    --color-background-primary: var(--color-neutral-50);
+    --color-background-secondary: var(--color-neutral-100);
+    --color-border: var(--color-neutral-200);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { min-width: 320px; margin: 0; background: #F5F6F2; color: #1D2939; font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
+  button, a, input { font: inherit; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #F7A072; outline-offset: 3px; }
+}
+
+@layer components {
+  .kicker { @apply mb-3 text-[10px] font-bold uppercase tracking-[0.11em] text-[#8B96A4]; }
+  .section-heading { @apply mb-5 flex items-center justify-between gap-5; }
+  .section-heading .kicker { @apply mb-2; }
+  .text-link { @apply text-[11px] font-bold text-coral-600 no-underline; }
+  .text-link span { @apply ml-1 text-base font-normal; }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "pocketflow",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "scripts": {
+    "dev:web": "corepack pnpm --filter @pocketflow/web dev",
+    "dev:api": "corepack pnpm --filter @pocketflow/api dev",
+    "build": "corepack pnpm -r build",
+    "typecheck": "corepack pnpm -r typecheck",
+    "check": "corepack pnpm -r check",
+    "db:generate": "corepack pnpm --filter @pocketflow/api db:generate",
+    "db:migrate:local": "corepack pnpm --filter @pocketflow/api db:migrate:local"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

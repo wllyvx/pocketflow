@@ -1,0 +1,27 @@
+---
+import Brand from './Brand.astro';
+
+const links = [
+  ['◫', 'Overview', '#overview'],
+  ['↔', 'Transactions', '#transactions'],
+  ['▣', 'Envelopes', '#envelopes'],
+  ['⌁', 'Insights', '#insights'],
+];
+---
+
+<aside class="flex w-[250px] flex-none flex-col border-r border-[#E8EBE5] bg-white px-[18px] pb-5 pt-[30px]" aria-label="Primary navigation">
+  <Brand />
+  <div class="mb-3 mt-[57px] px-3.5 text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]">YOUR WORKSPACE</div>
+  <nav class="grid gap-1">
+    {links.map(([icon, label, href], index) => <a class:list={["nav-item", "flex min-h-11 items-center gap-3 rounded-md px-3 text-[13px] font-semibold text-[#768292] no-underline transition-fast hover:bg-[#F6F7F4] hover:text-[#1D2939]", { 'bg-coral-50 text-coral-600': index === 0 }]} href={href} data-nav={label.toLowerCase()}><span class="w-[18px] text-center text-[19px] leading-none">{icon}</span>{label}</a>)}
+  </nav>
+  <div class="mt-auto grid gap-1">
+    <a class="nav-item flex min-h-11 items-center gap-3 rounded-md px-3 text-[13px] font-semibold text-[#768292] no-underline transition-fast hover:bg-[#F6F7F4]" href="#achievements"><span class="w-[18px] text-center text-[19px] leading-none">✦</span>Achievements <span class="ml-auto h-1.5 w-1.5 rounded-full bg-coral-500"></span></a>
+    <a class="nav-item flex min-h-11 items-center gap-3 rounded-md px-3 text-[13px] font-semibold text-[#768292] no-underline transition-fast hover:bg-[#F6F7F4]" href="#settings"><span class="w-[18px] text-center text-[19px] leading-none">⚙</span>Settings</a>
+    <div class="mt-[22px] flex items-center gap-2.5 border-t border-[#EDF0EB] px-2.5 pt-3.5">
+      <span class="grid h-[35px] w-[35px] flex-none place-items-center rounded-full bg-[#22354A] text-[10px] font-bold text-white">AM</span>
+      <div><strong class="block whitespace-nowrap text-[11px] text-[#2E3B4D]">Alex Morgan</strong><small class="mt-0.5 block whitespace-nowrap text-[10px] text-[#9AA3AD]">Personal plan</small></div>
+      <span class="ml-auto tracking-[2px] text-[#AEB6C0]">···</span>
+    </div>
+  </div>
+</aside>
