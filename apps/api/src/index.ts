@@ -112,7 +112,8 @@ app.get("/api/onboarding", async (context) => {
     return context.json({ success: false, error: { code: "USER_NOT_FOUND", message: "User profile has not been provisioned." } }, 404);
   }
 
-  return context.json({ success: true, data: { status: user.onboardingStatus, canSkip: user.onboardingStatus === "pending" } });
+  const needsDisplayName = user.name === "PocketFlow User";
+  return context.json({ success: true, data: { status: needsDisplayName ? "pending" : user.onboardingStatus, canSkip: needsDisplayName || user.onboardingStatus === "pending" } });
 });
 
 app.post("/api/onboarding", async (context) => {
@@ -125,7 +126,7 @@ app.post("/api/onboarding", async (context) => {
   if (!user) {
     return context.json({ success: false, error: { code: "USER_NOT_FOUND", message: "Complete your profile setup first." } }, 404);
   }
-  if (user.onboardingStatus !== "pending") {
+  if (user.onboardingStatus !== "pending" && user.name !== "PocketFlow User") {
     return context.json({ success: false, error: { code: "ONBOARDING_COMPLETE", message: "Onboarding has already been completed." } }, 409);
   }
 
@@ -150,7 +151,7 @@ app.post("/api/onboarding", async (context) => {
     }
   }
 
-  const updated = await database.update(users).set({ onboardingStatus: status, updatedAt: new Date() }).where(eq(users.id, user.id)).returning();
+  const updated = await database.update(users).set({ name: body.data.displayName, onboardingStatus: status, updatedAt: new Date() }).where(eq(users.id, user.id)).returning();
   return context.json({ success: true, data: { status: updated[0].onboardingStatus } });
 });
 

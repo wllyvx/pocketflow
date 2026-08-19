@@ -206,41 +206,41 @@ corepack pnpm dev:web
 - [v] Pada onboarding, pilih satu sampai lima starter envelope.
 - [v] Klik **Continue**.
 - [v] Pastikan dashboard tampil.
-- [x] Pastikan nama user tampil di topbar.
-- [ ] Logout/login kembali dan pastikan user lama tidak diminta onboarding lagi.
-- [ ] Ulangi dengan user baru dan klik **Skip**.
-- [ ] Pastikan user langsung melihat dashboard kosong tanpa error.
+- [v] Pastikan nama user tampil di topbar.
+- [v] Logout/login kembali dan pastikan user lama tidak diminta onboarding lagi.
+- [v] Ulangi dengan user baru dan klik **Skip**.
+- [v] Pastikan user langsung melihat dashboard kosong tanpa error.
 
 ### Pemeriksaan browser jika gagal
 
-- [ ] Buka DevTools dengan `F12`.
-- [ ] Periksa tab **Console**.
-- [ ] Periksa tab **Network**.
-- [ ] Request yang diharapkan:
+- [v] Buka DevTools dengan `F12`.
+- [v] Periksa tab **Console**.
+- [v] Periksa tab **Network**.
+- [v] Request yang diharapkan:
   - `GET http://localhost:8787/api/users/me`
   - `GET http://localhost:8787/api/onboarding`
   - `POST http://localhost:8787/api/onboarding`
-- [ ] Pastikan request memiliki header `Authorization: Bearer ...`.
-- [ ] Jika status `401`, cek domain, Client ID, audience, dan Auth0 API.
-- [ ] Jika status `503`, jalankan migrasi D1 lokal.
-- [ ] Jika error CORS, pastikan frontend memakai port `4321` atau `4322`, API memakai port `8787`, lalu restart API setelah konfigurasi berubah.
+- [v] Pastikan request memiliki header `Authorization: Bearer ...`.
+- [v] Jika status `401`, cek domain, Client ID, audience, dan Auth0 API.
+- [v] Jika status `503`, jalankan migrasi D1 lokal.
+- [v] Jika error CORS, pastikan frontend memakai port `4321` atau `4322`, API memakai port `8787`, lalu restart API setelah konfigurasi berubah.
 
 ## 7. Jalankan Validasi Kode
 
-- [ ] Typecheck seluruh workspace:
+- [v] Typecheck seluruh workspace:
 
 ```powershell
 corepack pnpm typecheck
 ```
 
-- [ ] Jika root typecheck gagal, jalankan package secara terpisah untuk menemukan sumbernya:
+- [v] Jika root typecheck gagal, jalankan package secara terpisah untuk menemukan sumbernya:
 
 ```powershell
 corepack pnpm --filter @pocketflow/web typecheck
 corepack pnpm --filter @pocketflow/api typecheck
 ```
 
-- [ ] Build frontend:
+- [v] Build frontend:
 
 ```powershell
 corepack pnpm --filter @pocketflow/web build

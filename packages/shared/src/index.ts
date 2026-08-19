@@ -22,6 +22,7 @@ export const apiResponseSchema = z.discriminatedUnion("success", [
 export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 export const onboardingSchema = z.object({
+  displayName: z.string().trim().min(1).max(80),
   skip: z.boolean().default(false),
   starterEnvelopes: z.array(z.string().trim().min(1).max(80)).max(5).default([]),
 });

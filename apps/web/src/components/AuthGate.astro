@@ -7,6 +7,7 @@
     <button id="auth-login" class="mt-7 hidden w-full rounded bg-coral-500 px-3 py-3 text-xs font-bold text-white" type="button">Log in or sign up <span class="ml-2 text-base">→</span></button>
 
     <form id="onboarding-form" class="mt-7 hidden">
+      <label class="block text-xs font-bold text-[#657386]" for="display-name">Display name<input id="display-name" class="mt-1.5 block w-full rounded border border-[#DFE5E0] px-3 py-2.5 text-sm font-normal text-[#354356]" type="text" maxlength="80" autocomplete="name" placeholder="What should we call you?" required /></label>
       <fieldset class="border-0 p-0">
         <legend class="text-sm font-bold text-[#354356]">Start with a few envelopes</legend>
         <p class="mt-1 text-xs leading-5 text-[#82909D]">You can change these later. Choose up to five.</p>
@@ -34,6 +35,7 @@
   const gate = document.querySelector('#auth-gate');
   const loginButton = document.querySelector('#auth-login');
   const onboardingForm = document.querySelector('#onboarding-form') as HTMLFormElement | null;
+  const displayNameInput = document.querySelector('#display-name') as HTMLInputElement | null;
   const skipButton = document.querySelector('#onboarding-skip');
   const message = document.querySelector('#auth-message');
   const error = document.querySelector('#auth-error');
@@ -52,13 +54,19 @@
     gate?.remove();
     document.querySelector('[data-user-name]')?.replaceChildren(name);
     document.querySelector('[data-user-greeting]')?.replaceChildren(name);
+    document.querySelector('[data-sidebar-user-name]')?.replaceChildren(name);
   };
 
   const finishOnboarding = async (token: string, skip: boolean) => {
+    const displayName = displayNameInput?.value.trim() ?? '';
+    if (!displayName) {
+      displayNameInput?.focus();
+      throw new Error('Please enter a display name.');
+    }
     const starterEnvelopes = skip
       ? []
       : Array.from(document.querySelectorAll<HTMLInputElement>('.starter-envelope:checked')).map((input) => input.value);
-    await completeOnboarding(token, { skip, starterEnvelopes });
+    await completeOnboarding(token, { displayName, skip, starterEnvelopes });
     window.location.reload();
   };
 
@@ -87,6 +95,10 @@
     const dashboard = await getDashboard(token);
     showDashboard(user.data.name, dashboard.data);
   };
+
+  document.querySelector('#logout-button')?.addEventListener('click', async () => {
+    await (await getAuthClient()).logout({ logoutParams: { returnTo: window.location.origin } });
+  });
 
   loginButton?.addEventListener('click', async () => {
     try {

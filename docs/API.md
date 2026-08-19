@@ -103,7 +103,7 @@ For endpoints returning lists of resources, pagination details will be included 
     #### POST /onboarding
 
     *   **Description:** Completes onboarding, optionally creating starter envelopes, or skips it.
-    *   **Request Body:** `{ "skip": false, "starterEnvelopes": ["Groceries", "Transport", "Fun"] }`
+    *   **Request Body:** `{ "displayName": "Alex Morgan", "skip": false, "starterEnvelopes": ["Groceries", "Transport", "Fun"] }`
     *   **Status Codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`, `409 Conflict`, `503 Service Unavailable`.
 
 ### Dashboard

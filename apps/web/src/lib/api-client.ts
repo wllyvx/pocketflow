@@ -61,7 +61,7 @@ export async function getDashboard(token: string) {
   return request<{ success: true; data: DashboardData }>("/api/dashboard", token);
 }
 
-export async function completeOnboarding(token: string, input: { skip: boolean; starterEnvelopes: string[] }) {
+export async function completeOnboarding(token: string, input: { displayName: string; skip: boolean; starterEnvelopes: string[] }) {
   return request<{ success: true; data: { status: CurrentUser["onboardingStatus"] } }>("/api/onboarding", token, {
     method: "POST",
     body: JSON.stringify(input),
