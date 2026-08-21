@@ -7,6 +7,7 @@ import { categories, envelopes, transactions, users } from "./db/schema";
 import { requireAuth, type AuthVariables } from "./middleware/auth";
 import transactionsRouter from "./routes/transactions";
 import receiptsRouter from "./routes/receipts";
+import envelopesRouter from "./routes/envelopes";
 
 export type Bindings = {
   DB?: D1Database;
@@ -48,6 +49,7 @@ app.get("/api/hello", (context) => context.json({
 
 // Mount transactions router
 app.route("/api/transactions", transactionsRouter);
+app.route("/api/envelopes", envelopesRouter);
 
 app.get("/api/users/me", async (context) => {
   const now = new Date();

@@ -38,6 +38,8 @@ async function updateTransactionApi(token, id, input) {
 
 let envelopes = [];
 
+const formatAmount = (value) => value === '' ? '' : new Intl.NumberFormat('id-ID').format(Number(value));
+
 function token() {
   return localStorage.getItem('authToken') ?? '';
 }
@@ -59,14 +61,14 @@ function renderForm(transaction = null) {
         <h2 id="modal-title" class="font-display text-2xl font-semibold text-[#213043]">${isEdit ? 'Edit Transaction' : 'Add Transaction'}</h2>
         <button type="button" class="modal-close border-0 bg-transparent text-[25px] text-[#82909D]" aria-label="Close dialog">×</button>
       </div>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Type</span>
-        <select name="type" class="mt-1 block w-full border-gray-300 rounded-md" required>
-          <option value="income" ${selectedType === 'income' ? 'selected' : ''}>Income</option>
-          <option value="expense" ${selectedType === 'expense' ? 'selected' : ''}>Expense</option>
-          <option value="transfer" ${selectedType === 'transfer' ? 'selected' : ''}>Transfer</option>
-        </select></label>
+      <fieldset><legend class="text-sm font-medium text-gray-700">Type</legend>
+        <div class="mt-1 grid grid-cols-3 gap-1 rounded-md bg-[#F1F3F1] p-1">
+          ${['expense', 'income', 'transfer'].map(type => `<button type="button" class="transaction-type rounded px-2 py-2 text-xs font-semibold ${selectedType === type ? 'bg-white text-[#D66D57] shadow-sm' : 'text-[#82909D]'}" data-type="${type}" aria-pressed="${selectedType === type}">${type.charAt(0).toUpperCase() + type.slice(1)}</button>`).join('')}
+        </div>
+        <input type="hidden" name="type" value="${selectedType}" /></fieldset>
       <label class="block"><span class="text-sm font-medium text-gray-700">Amount</span>
-        <input type="number" name="amount" min="0.01" step="0.01" value="${transaction?.amount ?? ''}" class="mt-1 block w-full border-gray-300 rounded-md" required /></label>
+        <div class="relative mt-1"><span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-sm text-[#82909D]">Rp</span>
+          <input type="text" name="amount" inputmode="decimal" value="${formatAmount(transaction?.amount ?? '')}" class="block w-full rounded-md border-gray-300 pl-10" required aria-describedby="transaction-form-error" /></div></label>
       <label class="block"><span class="text-sm font-medium text-gray-700">Description</span>
         <input type="text" name="description" value="${transaction?.description ?? ''}" class="mt-1 block w-full border-gray-300 rounded-md" required /></label>
       <label class="block"><span class="text-sm font-medium text-gray-700">Date</span>
@@ -75,7 +77,7 @@ function renderForm(transaction = null) {
         <select name="envelopeId" class="mt-1 block w-full border-gray-300 rounded-md">
           <option value="">No envelope</option>${envelopes.map(e => `<option value="${e.id}" ${transaction?.envelopeId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
         </select></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Destination envelope</span>
+      <label class="destination-envelope block ${selectedType === 'transfer' ? '' : 'hidden'}"><span class="text-sm font-medium text-gray-700">Destination envelope</span>
         <select name="destinationEnvelopeId" class="mt-1 block w-full border-gray-300 rounded-md">
           <option value="">No destination</option>${envelopes.map(e => `<option value="${e.id}" ${transaction?.destinationEnvelopeId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
         </select></label>
@@ -90,6 +92,27 @@ function renderForm(transaction = null) {
   `;
   contentDiv.innerHTML = formHtml;
   const form = document.getElementById('add-transaction-form');
+  const typeInput = form.querySelector('input[name="type"]');
+  const destinationField = form.querySelector('.destination-envelope');
+  const typeButtons = form.querySelectorAll('.transaction-type');
+  const updateType = (type) => {
+    typeInput.value = type;
+    destinationField.classList.toggle('hidden', type !== 'transfer');
+    typeButtons.forEach((button) => {
+      const active = button.dataset.type === type;
+      button.classList.toggle('bg-white', active);
+      button.classList.toggle('text-[#D66D57]', active);
+      button.classList.toggle('shadow-sm', active);
+      button.classList.toggle('text-[#82909D]', !active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  };
+  typeButtons.forEach((button) => button.addEventListener('click', () => updateType(button.dataset.type)));
+  const amountInput = form.querySelector('input[name="amount"]');
+  amountInput.addEventListener('input', () => {
+    const digits = amountInput.value.replace(/[^\d]/g, '');
+    amountInput.value = digits ? formatAmount(digits) : '';
+  });
   form.querySelector('.modal-close').addEventListener('click', close);
   form.querySelector('.modal-cancel').addEventListener('click', close);
   form.addEventListener('submit', async (e) => {
@@ -101,6 +124,18 @@ function renderForm(transaction = null) {
       const envelopeId = String(data.get('envelopeId') || '') || null;
       const destinationEnvelopeId = String(data.get('destinationEnvelopeId') || '') || null;
       const date = String(data.get('date'));
+      const amountText = String(data.get('amount') || '').replace(/[^\d]/g, '');
+      const amount = Number(amountText);
+      if (!amountText || !Number.isFinite(amount) || amount <= 0) {
+        formError.textContent = 'Amount must be a number greater than 0.';
+        formError.classList.remove('hidden');
+        return;
+      }
+      if (!date || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
+        formError.textContent = 'Please enter a valid date.';
+        formError.classList.remove('hidden');
+        return;
+      }
       const maxDateValue = new Date();
       maxDateValue.setFullYear(maxDateValue.getFullYear() + 1);
       if (new Date(`${date}T23:59:59`).getTime() > maxDateValue.getTime()) {
@@ -125,7 +160,7 @@ function renderForm(transaction = null) {
       }
       const input = {
         type,
-        amount: Number(data.get('amount')),
+        amount,
         description: String(data.get('description')),
         date,
         envelopeId,
@@ -143,12 +178,17 @@ function renderForm(transaction = null) {
           } else {
             const uploadData = new FormData();
             uploadData.append('receipt', receiptFile);
-            const uploadRes = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/receipts`, { method: 'POST', body: uploadData });
+            const uploadRes = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/receipts`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token()}` },
+              body: uploadData,
+            });
             const uploadJson = await uploadRes.json();
             if (!uploadRes.ok || !uploadJson.success) {
               receiptWarning = uploadJson.error?.message ?? 'Receipt upload failed. The transaction was saved without it.';
             } else {
-              await updateTransactionApi(token(), saved.data.id, { receiptImageUrl: uploadJson.data.receiptUrl });
+              const savedId = saved.data?.id ?? transaction?.id;
+              if (savedId) await updateTransactionApi(token(), savedId, { receiptImageUrl: uploadJson.data.receiptUrl });
             }
           }
         }

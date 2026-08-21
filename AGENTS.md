@@ -78,16 +78,16 @@ Whenever a new decision is made that diverges from the documents (e.g., the Fina
 
 Progress for each functional requirement (FR) is tracked in `progress/FR-XX/` (e.g. `progress/FR-01/`, `progress/FR-02/`), separate from `docs/`, which holds the stable source-of-truth specs. Each FR folder may contain:
 
-- `plan.md` — the approach, decisions, and work breakdown agreed on during Planning Mode.
-- `todo.md` — the granular checklist tracked and updated during Change/Edit Mode.
+- `implementation_plan.md` — the approach, decisions, and work breakdown agreed on during Planning Mode.
+- `task.md` — the granular checklist tracked and updated during Change/Edit Mode.
 
 **Rules the agent must follow:**
 
-- At the start of every session touching an FR, check whether `progress/FR-XX/plan.md` and `progress/FR-XX/todo.md` already exist.
+- At the start of every session touching an FR, check whether `progress/FR-XX/implementation_plan.md` and `progress/FR-XX/task.md` already exist.
 - **If they exist:** read them first for context (current status, what's done, what's pending, prior decisions), and keep them updated as work progresses (check off completed items, add newly discovered tasks, note blockers).
 - **If they don't exist:** do **not** create them automatically. Their absence means that FR hasn't been scoped/started yet by the user — surface this to the user instead of assuming or generating a plan/todo unprompted.
-- The user owns creation of `plan.md` and `todo.md`. The agent's role is limited to reading and updating existing files, never initializing new ones on its own.
-- Never let `todo.md` duplicate `docs/ROADMAP.md` — `docs/ROADMAP.md` stays at the phase/roadmap level; `progress/FR-XX/` is the technical execution breakdown of a single roadmap item.
+- The user owns creation of `implementation_plan.md` and `task.md`. The agent's role is limited to reading and updating existing files, never initializing new ones on its own.
+- Never let `task.md` duplicate `docs/ROADMAP.md` — `docs/ROADMAP.md` stays at the phase/roadmap level; `progress/FR-XX/` is the technical execution breakdown of a single roadmap item.
 
 ## 10. Tech Stack Summary (final, from `docs/ARCHITECTURE.md`)
 
@@ -107,3 +107,10 @@ You must maximize token efficiency. NEVER read raw code files or use full-text g
 - **Call Chains:** Use `trace_call_path` to map execution flows or dependencies between components.
 - **Impact & Dead Code:** Run Cypher queries (`query_graph`) or specialized impact analysis tools to check for breaking changes or unused code before refactoring.
 - **File Reading Limits:** Only read raw text files after narrowing down exact line numbers via the MCP server. Only read minimal code chunks; never read whole files larger than 100 lines unless strictly required for a rewrite.
+
+## SHADCN/UI SKILL EXECUTION PROTOCOL
+You MUST strictly load and follow the shadcn/ui skill rules located in `.agent/skills/shadcn/SKILL.md` (or the corresponding documentation file within that directory) before creating, modifying, or styling any UI component. Do not write custom components from scratch if a shadcn equivalent exists.
+
+- **Read Local Skill:** Open and analyze the rules inside `.agent/skills/shadcn/` to understand the specific framework setup, icon mapping, and project architecture.
+- **Use CLI Only:** Always use `npx shadcn@latest add <component-name>` to install new components. Never manually copy-paste component code from the web.
+- **Check Context:** Read `package.json` and the existing Tailwind configuration to ensure full compatibility with the local shadcn skill setup.

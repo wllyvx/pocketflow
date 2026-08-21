@@ -88,6 +88,29 @@ export const createTransactionSchema = z
         message: "Envelope is required for expense transactions.",
       });
     }
+    if (input.type === "transfer") {
+      if (!input.envelopeId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["envelopeId"],
+          message: "Source envelope is required for transfers.",
+        });
+      }
+      if (!input.destinationEnvelopeId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["destinationEnvelopeId"],
+          message: "Destination envelope is required for transfers.",
+        });
+      }
+      if (input.envelopeId && input.envelopeId === input.destinationEnvelopeId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["destinationEnvelopeId"],
+          message: "Source and destination envelopes must be different.",
+        });
+      }
+    }
   });
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
@@ -130,6 +153,29 @@ export const updateTransactionSchema = z
         message: "Envelope is required for expense transactions.",
       });
     }
+    if (input.type === "transfer") {
+      if (input.envelopeId === undefined || input.envelopeId === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["envelopeId"],
+          message: "Source envelope is required for transfers.",
+        });
+      }
+      if (input.destinationEnvelopeId === undefined || input.destinationEnvelopeId === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["destinationEnvelopeId"],
+          message: "Destination envelope is required for transfers.",
+        });
+      }
+      if (input.envelopeId && input.envelopeId === input.destinationEnvelopeId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["destinationEnvelopeId"],
+          message: "Source and destination envelopes must be different.",
+        });
+      }
+    }
   });
 
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
@@ -162,4 +208,71 @@ export interface TransactionItem {
   isManual?: boolean;
   createdAt: string;
   updatedAt?: string;
+}
+
+export const envelopeResetFrequencySchema = z.enum(["monthly", "weekly", "once"]);
+export type EnvelopeResetFrequency = z.infer<typeof envelopeResetFrequencySchema>;
+
+export const createEnvelopeSchema = z.object({
+  name: z.string().trim().min(1, "Envelope name is required").max(80, "Envelope name must not exceed 80 characters"),
+  categoryId: z.string().trim().min(1, "Category ID is required"),
+  budgetedAmount: z.number({ invalid_type_error: "Budgeted amount must be a number" }).nonnegative("Budgeted amount cannot be negative"),
+  resetFrequency: envelopeResetFrequencySchema.default("monthly"),
+});
+export type CreateEnvelopeInput = z.infer<typeof createEnvelopeSchema>;
+
+export const updateEnvelopeSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  categoryId: z.string().trim().min(1).optional(),
+  budgetedAmount: z.number({ invalid_type_error: "Budgeted amount must be a number" }).nonnegative("Budgeted amount cannot be negative").optional(),
+  resetFrequency: envelopeResetFrequencySchema.optional(),
+});
+export type UpdateEnvelopeInput = z.infer<typeof updateEnvelopeSchema>;
+
+export const fillEnvelopeSchema = z.object({
+  amount: z.number({ invalid_type_error: "Amount must be a number" }).positive("Fill amount must be greater than 0"),
+});
+export type FillEnvelopeInput = z.infer<typeof fillEnvelopeSchema>;
+
+export const transferEnvelopeSchema = z.object({
+  fromEnvelopeId: z.string().trim().min(1, "Source envelope ID is required"),
+  toEnvelopeId: z.string().trim().min(1, "Destination envelope ID is required"),
+  amount: z.number({ invalid_type_error: "Amount must be a number" }).positive("Transfer amount must be greater than 0"),
+}).superRefine((data, ctx) => {
+  if (data.fromEnvelopeId === data.toEnvelopeId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["toEnvelopeId"], message: "Source and destination envelopes must be different." });
+  }
+});
+export type TransferEnvelopeInput = z.infer<typeof transferEnvelopeSchema>;
+
+export const deleteEnvelopeSchema = z.object({
+  transferToEnvelopeId: z.string().trim().min(1).optional(),
+  returnToAvailableToSpend: z.boolean().default(false),
+}).superRefine((input, ctx) => {
+  if (input.transferToEnvelopeId && input.returnToAvailableToSpend) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["returnToAvailableToSpend"],
+      message: "Choose either a transfer target or Available to Spend, not both.",
+    });
+  }
+});
+export type DeleteEnvelopeInput = z.infer<typeof deleteEnvelopeSchema>;
+
+export interface EnvelopeItem {
+  id: string;
+  userId: string;
+  categoryId: string;
+  categoryName?: string | null;
+  name: string;
+  budgetedAmount: number;
+  currentAmount: number;
+  resetFrequency: EnvelopeResetFrequency;
+  lastResetDate: string;
+  createdAt: string;
+  updatedAt: string;
+  relatedTransactionCount?: number;
+  totalSpent?: number;
+  remainingAmount?: number;
+  isOverBudget?: boolean;
 }

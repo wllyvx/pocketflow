@@ -3,6 +3,7 @@
 import AddTransactionModal from '../components/AddTransactionModal.astro';
 import AuthGate from '../components/AuthGate.astro';
 import EnvelopeProgress from '../components/EnvelopeProgress.astro';
+import EnvelopeManager from '../components/EnvelopeManager.astro';
 import MobileNav from '../components/MobileNav.astro';
 import Sidebar from '../components/Sidebar.astro';
 import SpendingRhythm from '../components/SpendingRhythm.astro';
@@ -28,6 +29,7 @@ import '../styles/global.css';
         <Topbar />
         <SummaryCards />
         <EnvelopeProgress />
+        <EnvelopeManager />
         <section class="mt-11 grid grid-cols-[1.13fr_0.87fr] gap-[18px] max-lg:grid-cols-1">
           <TransactionsPanel />
           <SpendingRhythm />

@@ -129,38 +129,103 @@ For endpoints returning lists of resources, pagination details will be included 
 
 ### Budget Envelopes
 
-#### POST /envelopes
+All envelope endpoints require authentication and use the standard success/error response format.
 
-*   **Description:** Creates a new budget envelope for the authenticated user.
-*   **Auth Level:** Authenticated User
-*   **Request Body (JSON):**
-    ```json
-    {
-      "name": "Groceries",
-      "budgetAmount": 500.00,
-      "colorHex": "#4CAF50"
-    }
-    ```
-*   **Response Body (201 Created):**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "id": "envelope-uuid-123",
-        "name": "Groceries",
-        "budgetAmount": 500.00,
-        "currentBalance": 500.00,
-        "colorHex": "#4CAF50",
-        "userId": "user-uuid-abc",
-        "createdAt": "2023-10-27T14:30:00Z"
-      }
-    }
-    ```
-*   **Status Codes:**
-    *   `201 Created`: Envelope successfully created.
-    *   `400 Bad Request`: Invalid input data (e.g., missing name, negative amount).
-    *   `401 Unauthorized`: Missing or invalid authentication token.
-    *   `500 Internal Server Error`: An unexpected server error occurred.
+#### GET /api/envelopes
+
+Returns all envelopes owned by the authenticated user, ordered by creation date and name. Request body: none. Success response: `200 { "success": true, "data": [EnvelopeItem] }`. Possible errors: `401 UNAUTHORIZED`, `404 USER_NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+#### GET /api/envelopes/:id
+
+Returns one envelope, including category and spending summary: `relatedTransactionCount`, `totalSpent`, `remainingAmount`, and `isOverBudget`. Request body: none. Possible errors: `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+#### GET /api/envelopes/:id/delete-preview
+
+Returns the balance and number of transactions that would be deleted. Request body: none.
+
+```json
+{
+  "success": true,
+  "data": {
+    "envelopeId": "envelope-uuid-123",
+    "currentAmount": 250,
+    "relatedTransactionCount": 4,
+    "requiresBalanceAction": true
+  }
+}
+```
+
+Possible errors: `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+#### POST /api/envelopes
+
+Creates an envelope.
+
+```json
+{
+  "name": "Groceries",
+  "categoryId": "category-uuid-123",
+  "budgetedAmount": 500,
+  "resetFrequency": "monthly"
+}
+```
+
+Returns `201 Created` with an `EnvelopeItem`. Names are unique per user. Possible errors: `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 CATEGORY_NOT_FOUND`, `409 DUPLICATE_NAME`, `503 DATABASE_UNAVAILABLE`.
+
+#### PUT /api/envelopes/:id
+
+Updates any provided envelope fields.
+
+```json
+{
+  "budgetedAmount": 650,
+  "resetFrequency": "weekly"
+}
+```
+
+Returns `200 { "success": true, "data": EnvelopeItem }`. Possible errors: `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 NOT_FOUND` or `CATEGORY_NOT_FOUND`, `409 DUPLICATE_NAME`, `503 DATABASE_UNAVAILABLE`.
+
+#### POST /api/envelopes/:id/fill
+
+Allocates funds from `Available to Spend` and records a manual transfer transaction.
+
+```json
+{ "amount": 250 }
+```
+
+Returns `200 { "success": true, "data": EnvelopeItem }`. Returns `400` with `INSUFFICIENT_AVAILABLE_FUNDS` when the amount exceeds available income minus all envelope balances. Other errors: `400 INVALID_INPUT`, `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+#### POST /api/envelopes/transfer
+
+Moves funds between two envelopes and records a manual transfer transaction.
+
+```json
+{
+  "fromEnvelopeId": "envelope-uuid-123",
+  "toEnvelopeId": "envelope-uuid-456",
+  "amount": 75
+}
+```
+
+Returns `200 { "success": true, "message": "Envelope funds transferred successfully." }`. Possible errors: `400 INVALID_INPUT` or `INSUFFICIENT_ENVELOPE_FUNDS`, `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+#### DELETE /api/envelopes/:id
+
+Deletes an envelope and all transactions where it is the source or destination. A zero-balance envelope can be deleted directly. For a non-zero balance, choose exactly one action:
+
+```json
+{ "transferToEnvelopeId": "envelope-uuid-456" }
+```
+
+Or explicitly return the balance to Available to Spend:
+
+```json
+{ "returnToAvailableToSpend": true }
+```
+
+Returns `200 { "success": true, "message": "Envelope and associated transactions deleted successfully." }`. Possible errors: `400 INVALID_INPUT`, `ENVELOPE_BALANCE_REQUIRES_ACTION`, or invalid target, `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+**Status Codes:** `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `409 Conflict` (duplicate name), `503 Service Unavailable`.
 
 ### Transactions
 

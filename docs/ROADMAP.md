@@ -19,9 +19,9 @@ Tujuan: repo siap, environment jalan, deploy pipeline paling sederhana sudah ter
 Tujuan: aplikasi yang benar-benar bisa dipakai untuk mencatat keuangan manual sehari-hari.
 
 **1a. Data & Envelope**
-- [ ] CRUD Envelope (FR-03) + endpoint API sesuai API.md.
-- [ ] Logika fill envelope & transfer antar-envelope.
-- [ ] Halaman "Kelola Envelope" (lihat USER_FLOW.md §4).
+- [x] CRUD Envelope (FR-03) + endpoint API sesuai API.md.
+- [x] Logika fill envelope & transfer antar-envelope.
+- [x] Halaman "Kelola Envelope" (lihat USER_FLOW.md §4).
 
 **1b. Transaksi Manual**
 - [ ] CRUD Transaksi manual (FR-02) — income/expense/transfer.

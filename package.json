@@ -6,6 +6,7 @@
     "dev:web": "corepack pnpm --filter @pocketflow/web dev",
     "dev:api": "corepack pnpm --filter @pocketflow/api dev",
     "build": "corepack pnpm -r build",
+    "test": "corepack pnpm --filter @pocketflow/api test",
     "typecheck": "corepack pnpm -r typecheck",
     "check": "corepack pnpm -r check",
     "db:generate": "corepack pnpm --filter @pocketflow/api db:generate",

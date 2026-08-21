@@ -14,6 +14,7 @@ let state = {
   envelopeId: ''
 };
 let envelopes = [];
+let envelopeById = new Map();
 
 // Reference to container elements (will be set after DOM is ready)
 let panelEl, filtersEl, paginationEl;
@@ -36,21 +37,31 @@ async function load() {
   renderPagination(data.pagination);
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
+
+function formatAmount(tx) {
+  const amount = `Rp ${new Intl.NumberFormat('id-ID').format(Number(tx.amount))}`;
+  return tx.type === 'income' ? `+ ${amount}` : tx.type === 'expense' ? `- ${amount}` : amount;
+}
+
 function renderTransactions(items) {
   if (items.length === 0) {
     panelEl.innerHTML = `<p class="text-xs text-[#82909D]">No transactions found.</p>`;
     return;
   }
   const rows = items.map(tx => `
-    <div class="flex items-center border-b px-2 py-1 last:border-b-0">
-      <span class="w-6 text-center" style="color: ${tx.type === 'income' ? '#10B981' : tx.type === 'expense' ? '#EF4444' : '#6366F1'}">
+    <div class="flex items-center border-b px-2 py-2 last:border-b-0 ${envelopeById.get(tx.envelopeId)?.currentAmount < 0 ? 'bg-[#FFF5F2]' : ''}">
+      <span class="grid h-7 w-7 place-items-center rounded-md text-sm font-bold" style="color: ${tx.type === 'income' ? '#10B981' : tx.type === 'expense' ? '#EF4444' : '#6366F1'}; background: ${tx.type === 'income' ? '#E8F7F0' : tx.type === 'expense' ? '#FDE8E2' : '#EEF0FF'}">
         ${tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '↔'}
       </span>
       <div class="flex-1 ml-2">
-        <p class="text-xs font-bold text-[#354356] truncate">${tx.description}</p>
-        <p class="text-xs text-[#9AA4AE]">${tx.type} • ${new Date(tx.date).toLocaleDateString('id-ID')}</p>
+        <p class="text-xs font-bold text-[#354356] truncate">${escapeHtml(tx.description)}</p>
+        <p class="text-xs text-[#9AA4AE]">${tx.type} • ${new Date(tx.date).toLocaleDateString('id-ID')} • <span class="text-[#5C8FC5]">${escapeHtml(tx.envelopeName || 'No envelope')}</span></p>
       </div>
-      <div class="text-xs font-bold mr-2" style="color: ${tx.type === 'income' ? '#10B981' : '#D66D57'}">${Number(tx.amount).toLocaleString('id-ID')}</div>
+      ${envelopeById.get(tx.envelopeId)?.currentAmount < 0 ? '<span class="mr-2 rounded bg-[#FDE8E2] px-1.5 py-1 text-[9px] font-bold text-[#C6533D]">Over budget</span>' : ''}
+      <div class="mr-2 text-xs font-bold" style="color: ${tx.type === 'income' ? '#10B981' : tx.type === 'transfer' ? '#6366F1' : '#D66D57'}">${formatAmount(tx)}</div>
       <button class="text-xs text-coral-600 mr-2" data-id="${tx.id}" data-action="edit">Edit</button>
       <button class="text-xs text-red-600" data-id="${tx.id}" data-action="delete">Delete</button>
     </div>`
@@ -102,7 +113,7 @@ function setupFilters() {
   const container = filtersEl;
   container.innerHTML = `<div class="flex gap-2">${types.map(t => {
     const label = t === '' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1);
-    const active = state.type === t ? 'bg-coral-50' : '';
+    const active = state.type === t ? 'bg-[#FDE8E2] text-[#C6533D]' : 'bg-white';
     return `<button type="button" class="px-2 py-1 text-xs border rounded ${active}" data-type="${t}">${label}</button>`;
   }).join('')}</div><select id="transaction-envelope-filter" class="rounded border px-2 py-1 text-xs"><option value="">All envelopes</option>${envelopes.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}</select>`;
   container.querySelectorAll('button').forEach(btn => {
@@ -125,6 +136,7 @@ async function refreshPanel() {
     const data = await response.json();
     if (data.success) {
       envelopes = data.data.envelopes;
+      envelopeById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
       setupFilters();
     }
   } finally {

@@ -76,7 +76,67 @@ import {
   type UpdateTransactionInput,
   type ListTransactionsQuery,
   type TransactionItem,
+  createEnvelopeSchema,
+  deleteEnvelopeSchema,
+  fillEnvelopeSchema,
+  transferEnvelopeSchema,
+  updateEnvelopeSchema,
+  type CreateEnvelopeInput,
+  type DeleteEnvelopeInput,
+  type EnvelopeItem,
+  type FillEnvelopeInput,
+  type TransferEnvelopeInput,
+  type UpdateEnvelopeInput,
 } from "@pocketflow/shared";
+
+export type EnvelopeDeletePreview = {
+  envelopeId: string;
+  currentAmount: number;
+  relatedTransactionCount: number;
+  requiresBalanceAction: boolean;
+};
+
+export async function getEnvelopes(token: string) {
+  return request<{ success: true; data: EnvelopeItem[] }>("/api/envelopes", token);
+}
+
+export async function getEnvelope(token: string, id: string) {
+  return request<{ success: true; data: EnvelopeItem }>(`/api/envelopes/${id}`, token);
+}
+
+export async function getEnvelopeDeletePreview(token: string, id: string) {
+  return request<{ success: true; data: EnvelopeDeletePreview }>(`/api/envelopes/${id}/delete-preview`, token);
+}
+
+export async function createEnvelope(token: string, input: CreateEnvelopeInput) {
+  const parsed = createEnvelopeSchema.safeParse(input);
+  if (!parsed.success) throw new Error(`Invalid envelope input: ${parsed.error.message}`);
+  return request<{ success: true; data: EnvelopeItem }>("/api/envelopes", token, { method: "POST", body: JSON.stringify(parsed.data) });
+}
+
+export async function updateEnvelope(token: string, id: string, input: UpdateEnvelopeInput) {
+  const parsed = updateEnvelopeSchema.safeParse(input);
+  if (!parsed.success) throw new Error(`Invalid envelope update input: ${parsed.error.message}`);
+  return request<{ success: true; data: EnvelopeItem }>(`/api/envelopes/${id}`, token, { method: "PUT", body: JSON.stringify(parsed.data) });
+}
+
+export async function fillEnvelope(token: string, id: string, input: FillEnvelopeInput) {
+  const parsed = fillEnvelopeSchema.safeParse(input);
+  if (!parsed.success) throw new Error(`Invalid envelope fill input: ${parsed.error.message}`);
+  return request<{ success: true; data: EnvelopeItem }>(`/api/envelopes/${id}/fill`, token, { method: "POST", body: JSON.stringify(parsed.data) });
+}
+
+export async function transferEnvelope(token: string, input: TransferEnvelopeInput) {
+  const parsed = transferEnvelopeSchema.safeParse(input);
+  if (!parsed.success) throw new Error(`Invalid envelope transfer input: ${parsed.error.message}`);
+  return request<{ success: true; message: string }>("/api/envelopes/transfer", token, { method: "POST", body: JSON.stringify(parsed.data) });
+}
+
+export async function deleteEnvelope(token: string, id: string, input: DeleteEnvelopeInput = { returnToAvailableToSpend: false }) {
+  const parsed = deleteEnvelopeSchema.safeParse(input);
+  if (!parsed.success) throw new Error(`Invalid envelope delete input: ${parsed.error.message}`);
+  return request<{ success: true; message: string }>(`/api/envelopes/${id}`, token, { method: "DELETE", body: JSON.stringify(parsed.data) });
+}
 
 /** Retrieve paginated list of transactions */
 export async function getTransactions(token: string, query?: ListTransactionsQuery) {

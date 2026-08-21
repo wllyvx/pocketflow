@@ -213,6 +213,13 @@ export async function createTransaction(
         .where(eq(envelopes.id, envelope.id));
     }
   } else if (input.type === "transfer") {
+    if (!input.envelopeId || !input.destinationEnvelopeId) {
+      throw new ServiceError(
+        "INVALID_INPUT",
+        "Transfers require source and destination envelopes.",
+        400
+      );
+    }
     if (
       input.envelopeId &&
       input.destinationEnvelopeId &&
@@ -342,13 +349,13 @@ export async function updateTransaction(
 
   if (
     targetType === "transfer" &&
-    targetEnvelopeId &&
-    targetDestEnvelopeId &&
-    targetEnvelopeId === targetDestEnvelopeId
+    (!targetEnvelopeId || !targetDestEnvelopeId || targetEnvelopeId === targetDestEnvelopeId)
   ) {
     throw new ServiceError(
       "INVALID_INPUT",
-      "Source and destination envelopes must be different.",
+      !targetEnvelopeId || !targetDestEnvelopeId
+        ? "Transfers require source and destination envelopes."
+        : "Source and destination envelopes must be different.",
       400
     );
   }
