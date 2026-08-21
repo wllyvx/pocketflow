@@ -100,3 +100,10 @@ Progress for each functional requirement (FR) is tracked in `progress/FR-XX/` (e
 - **Bank sync:** Plaid — **Phase 2, not implemented in MVP**
 - **Monorepo:** pnpm workspaces
 - **Deploy:** `wrangler deploy` (single target: Cloudflare Workers)
+
+## Token Optimization & Codebase Memory MCP
+You must maximize token efficiency. NEVER read raw code files or use full-text grep to discover repository structures, call chains, or dependencies. Instead, ALWAYS leverage the active `codebase-memory-mcp` knowledge graph using these rules:
+- **Symbol Discovery:** Use `search_graph` or `get_architecture` to locate functions, classes, and types instead of opening files.
+- **Call Chains:** Use `trace_call_path` to map execution flows or dependencies between components.
+- **Impact & Dead Code:** Run Cypher queries (`query_graph`) or specialized impact analysis tools to check for breaking changes or unused code before refactoring.
+- **File Reading Limits:** Only read raw text files after narrowing down exact line numbers via the MCP server. Only read minimal code chunks; never read whole files larger than 100 lines unless strictly required for a rewrite.
