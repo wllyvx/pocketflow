@@ -56,16 +56,17 @@ erDiagram
     Transaction {
         String id PK
         String userId FK
-        String accountId FK
-        String envelopeId FK "Nullable, if not yet assigned to an envelope"
+        String accountId FK "Nullable in MVP (Phase 1) until Plaid integration"
+        String envelopeId FK "Nullable, source envelope"
+        String destinationEnvelopeId FK "Nullable, destination envelope for transfer"
         String categoryId FK "Nullable, if not yet categorized"
         String plaidTransactionId "Nullable, Plaid's transaction ID"
         String description "Transaction description"
-        Float amount "Positive for income/credit, negative for expense/debit"
-        String type "e.g., 'debit', 'credit', 'transfer'"
+        Float amount "Transaction amount"
+        String type "e.g., 'income', 'expense', 'transfer'"
         DateTime date "Date of the transaction"
         Boolean isManual "True if manually entered, false if from Plaid"
-        String receiptUrl "Nullable, URL to receipt in R2"
+        String receiptImageUrl "Nullable, URL to receipt in R2"
         DateTime createdAt
         DateTime updatedAt
     }
@@ -158,16 +159,17 @@ Records individual financial transactions, whether imported from Plaid or manual
 |:---|:---|:---|:---|
 | `id` | String | PK | Unique identifier for the transaction. |
 | `userId` | String | FK (User.id) | ID of the user who owns this transaction. |
-| `accountId` | String | FK (Account.id) | ID of the account this transaction belongs to. |
-| `envelopeId` | String | FK (Envelope.id), Nullable | ID of the envelope this transaction was assigned to. |
+| `accountId` | String | FK (Account.id), Nullable | ID of the account this transaction belongs to. Nullable in MVP (Phase 1) for manual transactions prior to Plaid account linking in Phase 2. |
+| `envelopeId` | String | FK (Envelope.id), Nullable | ID of the envelope this transaction was assigned to (source envelope for transfers). |
+| `destinationEnvelopeId` | String | FK (Envelope.id), Nullable | ID of the destination envelope for envelope-to-envelope transfer transactions. |
 | `categoryId` | String | FK (Category.id), Nullable | ID of the category this transaction belongs to. |
 | `plaidTransactionId` | String | UK, Nullable | Plaid's unique ID for the transaction. Null for manual transactions. |
 | `description` | String | | Description of the transaction. |
-| `amount` | Float | | The transaction amount. Positive for income/credit, negative for expense/debit. |
-| `type` | String | | Type of transaction (e.g., `debit`, `credit`, `transfer`). |
+| `amount` | Float | | The transaction amount (positive number). |
+| `type` | String | | Type of transaction (`income`, `expense`, `transfer`). |
 | `date` | DateTime | | The date the transaction occurred. |
 | `isManual` | Boolean | | True if the transaction was manually entered, false if imported from Plaid. |
-| `receiptUrl` | String | Nullable | URL to the uploaded receipt image in Cloudflare R2. |
+| `receiptImageUrl` | String | Nullable | URL to the uploaded receipt image in Cloudflare R2. |
 | `createdAt` | DateTime | Default: NOW | Timestamp when the transaction record was created. |
 | `updatedAt` | DateTime | Default: NOW, On Update: NOW | Timestamp of the last update to the transaction record. |
 
@@ -260,25 +262,27 @@ model Envelope {
 }
 
 model Transaction {
-  id               String     @id @default(cuid())
-  userId           String     @map("user_id")
-  accountId        String     @map("account_id")
-  envelopeId       String?    @map("envelope_id") // Nullable if not yet assigned
-  categoryId       String?    @map("category_id") // Nullable if not yet categorized
-  plaidTransactionId String?  @unique @map("plaid_transaction_id") // Null for manual transactions, unique for Plaid ones
-  description      String
-  amount           Float
-  type             String     // e.g., 'debit', 'credit', 'transfer'
-  date             DateTime
-  isManual         Boolean    @map("is_manual")
-  receiptUrl       String?    @map("receipt_url") // URL to Cloudflare R2 object
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  id                    String     @id @default(cuid())
+  userId                String     @map("user_id")
+  accountId             String?    @map("account_id") // Nullable in MVP (Phase 1)
+  envelopeId            String?    @map("envelope_id") // Nullable if not assigned / income / source envelope
+  destinationEnvelopeId String?    @map("destination_envelope_id") // Destination envelope for transfer
+  categoryId            String?    @map("category_id") // Nullable if not yet categorized
+  plaidTransactionId    String?    @unique @map("plaid_transaction_id") // Null for manual transactions, unique for Plaid ones
+  description           String
+  amount                Float
+  type                  String     // 'income', 'expense', 'transfer'
+  date                  DateTime
+  isManual              Boolean    @map("is_manual")
+  receiptImageUrl       String?    @map("receipt_image_url") // URL to Cloudflare R2 object
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
 
-  user     User     @relation(fields: [userId], references: [id])
-  account  Account  @relation(fields: [accountId], references: [id])
-  envelope Envelope? @relation(fields: [envelopeId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
+  user                User      @relation(fields: [userId], references: [id])
+  account             Account?  @relation(fields: [accountId], references: [id])
+  envelope            Envelope? @relation(fields: [envelopeId], references: [id])
+  destinationEnvelope Envelope? @relation(fields: [destinationEnvelopeId], references: [id])
+  category            Category? @relation(fields: [categoryId], references: [id])
 
   @@map("transactions")
 }

@@ -97,6 +97,7 @@
     }
 
     const token = await auth.getTokenSilently();
+    localStorage.setItem('authToken', token);
     const user = await getCurrentUser(token);
     const onboarding = await getOnboardingStatus(token);
     if (onboarding.data.status === 'pending') {
@@ -110,6 +111,7 @@
   };
 
   document.querySelector('#logout-button')?.addEventListener('click', async () => {
+    localStorage.removeItem('authToken');
     await (await getAuthClient()).logout({ logoutParams: { returnTo: window.location.origin } });
   });
 

@@ -67,3 +67,72 @@ export async function completeOnboarding(token: string, input: { displayName: st
     body: JSON.stringify(input),
   });
 }
+
+// --- Transaction CRUD API functions ---
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+  type CreateTransactionInput,
+  type UpdateTransactionInput,
+  type ListTransactionsQuery,
+  type TransactionItem,
+} from "@pocketflow/shared";
+
+/** Retrieve paginated list of transactions */
+export async function getTransactions(token: string, query?: ListTransactionsQuery) {
+  const qs = query
+    ? `?${new URLSearchParams(
+        Object.entries(query).reduce<Record<string, string>>((params, [key, value]) => {
+          if (value !== undefined) params[key] = String(value);
+          return params;
+        }, {})
+      ).toString()}`
+    : "";
+  return request<{
+    success: true;
+    data: TransactionItem[];
+    pagination: {
+      totalItems: number;
+      totalPages: number;
+      currentPage: number;
+      itemsPerPage: number;
+    };
+  }>(`/api/transactions${qs}`, token);
+}
+
+/** Retrieve a single transaction by ID */
+export async function getTransactionById(token: string, id: string) {
+  return request<{ success: true; data: TransactionItem }>(`/api/transactions/${id}`, token);
+}
+
+/** Create a new transaction */
+export async function createTransaction(token: string, input: CreateTransactionInput) {
+  // Client‑side validation using Zod schema
+  const parsed = createTransactionSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(`Invalid transaction input: ${parsed.error.message}`);
+  }
+  return request<{ success: true; data: TransactionItem }>("/api/transactions", token, {
+    method: "POST",
+    body: JSON.stringify(parsed.data),
+  });
+}
+
+/** Update an existing transaction */
+export async function updateTransaction(token: string, id: string, input: UpdateTransactionInput) {
+  const parsed = updateTransactionSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(`Invalid transaction update input: ${parsed.error.message}`);
+  }
+  return request<{ success: true; data: TransactionItem }>(`/api/transactions/${id}`, token, {
+    method: "PUT",
+    body: JSON.stringify(parsed.data),
+  });
+}
+
+/** Delete a transaction */
+export async function deleteTransaction(token: string, id: string) {
+  return request<{ success: true; message: string }>(`/api/transactions/${id}`, token, {
+    method: "DELETE",
+  });
+}

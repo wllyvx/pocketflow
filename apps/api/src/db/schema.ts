@@ -52,8 +52,9 @@ export const envelopes = sqliteTable("envelopes", {
 export const transactions = sqliteTable("transactions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id),
-  accountId: text("account_id").notNull().references(() => accounts.id),
+  accountId: text("account_id").references(() => accounts.id),
   envelopeId: text("envelope_id").references(() => envelopes.id),
+  destinationEnvelopeId: text("destination_envelope_id").references(() => envelopes.id),
   categoryId: text("category_id").references(() => categories.id),
   plaidTransactionId: text("plaid_transaction_id").unique(),
   description: text("description").notNull(),

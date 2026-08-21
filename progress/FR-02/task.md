@@ -1,0 +1,45 @@
+# Tasks for FR-02: Manual Transaction Management
+
+- [x] **Phase 0: Documentation Alignment**
+  - [x] 0.1 Update `docs/API.md` with `GET /transactions/:id`, `PUT /transactions/:id`, `DELETE /transactions/:id` and payload fields (`receiptImageUrl`)
+  - [x] 0.2 Update `docs/DATABASE.md` with note on `accountId` nullability in MVP (Fase 1) and `destinationEnvelopeId`
+- [x] **Phase 1: Shared Data Contracts & Validation**
+  - [x] 1.1 Add `transactionTypeSchema` (`"income" | "expense" | "transfer"`) in `packages/shared/src/index.ts`
+  - [x] 1.2 Add `createTransactionSchema` with validations (`amount > 0`, `date <= 1 year`, required envelope for expense, `receiptImageUrl`)
+  - [x] 1.3 Add `updateTransactionSchema` with partial validations
+  - [x] 1.4 Add `listTransactionsQuerySchema` with pagination and filter parameters
+  - [x] 1.5 Export TypeScript DTO types (`CreateTransactionInput`, `UpdateTransactionInput`, `ListTransactionsQuery`, `TransactionItem`)
+  - [x] 1.6 Run `corepack pnpm --filter @pocketflow/shared build` / typecheck
+- [x] **Phase 2: Database Schema & Migration**
+  - [x] 2.1 Update `transactions` in `apps/api/src/db/schema.ts` to make `accountId` nullable
+  - [x] 2.2 Add `destinationEnvelopeId` (optional nullable reference) in `apps/api/src/db/schema.ts`
+  - [x] 2.3 Generate migration `0003_make_transaction_account_id_nullable.sql` using `drizzle-kit`
+  - [x] 2.4 Apply migration to local D1 SQLite database
+- [x] **Phase 3: Backend Business Logic & REST Endpoints**
+  - [x] 3.1 Implement `apps/api/src/services/transaction.service.ts`:
+    - [x] 3.1.1 `listTransactions`
+    - [x] 3.1.2 `getTransactionById`
+    - [x] 3.1.3 `createTransaction`
+    - [x] 3.1.4 `updateTransaction`
+    - [x] 3.1.5 `deleteTransaction`
+  - [x] 3.2 Implement `apps/api/src/routes/transactions.ts` with Hono router:
+    - [x] 3.2.1 `GET /api/transactions`
+    - [x] 3.2.2 `POST /api/transactions`
+    - [x] 3.2.3 `GET /api/transactions/:id`
+    - [x] 3.2.4 `PUT /api/transactions/:id`
+    - [x] 3.2.5 `DELETE /api/transactions/:id`
+  - [x] 3.3 Mount `/api/transactions` in `apps/api/src/index.ts`
+  - [x] 3.4 Ensure `/api/dashboard` reflects accurate aggregated income, spent, and envelope balances
+  - [x] 3.5 Typecheck API with `corepack pnpm --filter @pocketflow/api typecheck`
+- [x] **Phase 4: Frontend API Client & Components**
+  - [x] 4.1 Update `apps/web/src/lib/api-client.ts` with transaction CRUD functions
+  - [x] 4.2 Upgrade `apps/web/src/components/AddTransactionModal.astro`
+  - [x] 4.3 Upgrade `apps/web/src/components/TransactionsPanel.astro` (with delete confirmation and pagination)
+  - [x] 4.4 Update `apps/web/src/pages/index.astro` & Dashboard integration (events & visual styling)
+  - [x] 4.5 Verify web build with `corepack pnpm --filter @pocketflow/web check` and `corepack pnpm --filter @pocketflow/web build`
+- [ ] **Phase 5: Verification & End-to-End Testing**
+  - [x] 5.1 Test Expense transaction and overspending flow (Playwright)
+  - [x] 5.2 Test Income and Transfer transaction balance mutations (Playwright)
+  - [x] 5.3 Test Editing and Deleting transactions (Playwright)
+  - [x] 5.4 Test Filtering and Pagination in UI (Playwright)
+  - [x] 5.5 Full workspace typecheck with `corepack pnpm typecheck`

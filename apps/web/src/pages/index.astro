@@ -1,4 +1,5 @@
 ---
+
 import AddTransactionModal from '../components/AddTransactionModal.astro';
 import AuthGate from '../components/AuthGate.astro';
 import EnvelopeProgress from '../components/EnvelopeProgress.astro';
@@ -19,7 +20,7 @@ import '../styles/global.css';
     <meta name="description" content="PocketFlow personal finance dashboard" />
     <title>Overview | PocketFlow</title>
   </head>
-  <body>
+  <body data-api-url={import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787'}>
     <AuthGate />
     <div class="hidden flex min-h-screen" id="app-shell">
       <Sidebar />
@@ -38,111 +39,113 @@ import '../styles/global.css';
   </body>
 </html>
 
-<script>
-  type Dashboard = {
-    availableToSpend: number;
-    monthlyIncome: number;
-    spent: number;
-    healthScore: number;
-    envelopes: Array<{ name: string; budgetedAmount: number; currentAmount: number }>;
-    transactions: Array<{ description: string; amount: number; type: string; date: string }>;
+<script type="module" is:inline>
+// Helper functions
+const formatMoney = (amount) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`;
+const formatDate = (value) => new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+
+// Dashboard rendering
+document.addEventListener('pocketflow:dashboard-ready', (event) => {
+  const dashboard = event.detail;
+  const setText = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = value;
   };
+  const availableToSpend = document.querySelector('#available-to-spend');
+  if (availableToSpend) {
+    availableToSpend.textContent = formatMoney(dashboard.availableToSpend);
+    availableToSpend.classList.toggle('text-[#F28B73]', dashboard.availableToSpend < 0);
+  }
+  setText('#monthly-income', formatMoney(dashboard.monthlyIncome));
+  setText('#total-spent', formatMoney(dashboard.spent));
+  setText('#rhythm-spending', formatMoney(dashboard.spent));
+  setText('#health-score', `${dashboard.healthScore}/100`);
+  setText('#health-label', dashboard.healthScore >= 70 ? 'Looking good' : dashboard.healthScore > 0 ? 'Needs attention' : 'No data yet');
+  const healthBar = document.querySelector('#health-bar');
+  if (healthBar) healthBar.style.width = `${dashboard.healthScore}%`;
 
-  const formatMoney = (amount: number) => `Rp ${new Intl.NumberFormat('id-ID').format(amount)}`;
-  const formatDate = (value: string) => new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
-
-  document.addEventListener('pocketflow:dashboard-ready', (event) => {
-    const dashboard = (event as CustomEvent<Dashboard>).detail;
-    const setText = (selector: string, value: string) => {
-      const element = document.querySelector(selector);
-      if (element) element.textContent = value;
-    };
-    setText('#available-to-spend', formatMoney(dashboard.availableToSpend));
-    setText('#monthly-income', formatMoney(dashboard.monthlyIncome));
-    setText('#total-spent', formatMoney(dashboard.spent));
-    setText('#rhythm-spending', formatMoney(dashboard.spent));
-    setText('#health-score', `${dashboard.healthScore}/100`);
-    setText('#health-label', dashboard.healthScore >= 70 ? 'Looking good' : dashboard.healthScore > 0 ? 'Needs attention' : 'No data yet');
-    const healthBar = document.querySelector<HTMLElement>('#health-bar');
-    if (healthBar) healthBar.style.width = `${dashboard.healthScore}%`;
-
-    const envelopeGrid = document.querySelector('#envelope-grid');
-    if (envelopeGrid) {
-      envelopeGrid.replaceChildren();
-      if (dashboard.envelopes.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'col-span-full text-xs text-[#82909D]';
-        empty.textContent = 'No envelopes yet. Complete onboarding or create one to get started.';
-        envelopeGrid.append(empty);
-      } else {
-        dashboard.envelopes.forEach((envelope) => {
-          const percent = envelope.budgetedAmount > 0 ? Math.round((envelope.currentAmount / envelope.budgetedAmount) * 100) : 0;
-          const card = document.createElement('article');
-          card.className = 'min-h-[182px] rounded-lg border border-[#E8EBE6] bg-white p-[19px_18px]';
-          card.innerHTML = `<div class="flex items-center justify-between"><span class="grid h-[31px] w-[31px] place-items-center rounded-md bg-[#E0F4ED] text-lg font-bold text-[#318C76]">✦</span><span class="h-1.5 w-1.5 rounded-full ${percent >= 100 ? 'bg-[#D66D57]' : 'bg-[#58BB91]'}"></span></div><h3 class="mt-[15px] font-display text-[13px] font-semibold text-[#334154]">${envelope.name}</h3><p class="mt-2 text-[11px] font-bold text-[#263548]">${formatMoney(envelope.currentAmount)} <span class="font-normal text-[#A1AAB4]">/ ${formatMoney(envelope.budgetedAmount)}</span></p><div class="mt-[17px] h-1.5 overflow-hidden rounded-full bg-[#EDF0ED]"><span class="block h-full rounded-full ${percent >= 100 ? 'bg-[#D66D57]' : 'bg-[#56B994]'}" style="width: ${Math.min(percent, 100)}%"></span></div><div class="mt-2 text-[9px] text-[#9CA6AF]">${percent}% used</div>`;
-          envelopeGrid.append(card);
-        });
-      }
+  const envelopeGrid = document.querySelector('#envelope-grid');
+  if (envelopeGrid) {
+    envelopeGrid.replaceChildren();
+    if (dashboard.envelopes.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'col-span-full text-xs text-[#82909D]';
+      empty.textContent = 'No envelopes yet. Complete onboarding or create one to get started.';
+      envelopeGrid.append(empty);
+    } else {
+      dashboard.envelopes.forEach((envelope) => {
+        const percent = envelope.budgetedAmount > 0 ? Math.round((envelope.currentAmount / envelope.budgetedAmount) * 100) : 0;
+        const isOverBudget = envelope.currentAmount < 0 || percent >= 100;
+        const statusLabel = isOverBudget ? 'Over budget' : `${Math.max(0, percent)}% used`;
+        const progressWidth = isOverBudget ? 100 : Math.min(Math.max(percent, 0), 100);
+        const card = document.createElement('article');
+        card.className = `min-h-[182px] rounded-lg border ${isOverBudget ? 'border-[#F5C1B1]' : 'border-[#E8EBE6]'} bg-white p-[19px_18px]`;
+        card.innerHTML = `<div class="flex items-center justify-between"><span class="grid h-[31px] w-[31px] place-items-center rounded-md ${isOverBudget ? 'bg-[#FDE8E2] text-[#D66D57]' : 'bg-[#E0F4ED] text-[#318C76]'} text-lg font-bold">✦</span><span class="h-1.5 w-1.5 rounded-full ${isOverBudget ? 'bg-[#EF4444]' : 'bg-[#58BB91]'}"></span></div><div class="mt-[15px] flex items-start justify-between gap-2"><h3 class="font-display text-[13px] font-semibold text-[#334154]">${envelope.name}</h3>${isOverBudget ? '<span class="whitespace-nowrap rounded bg-[#FDE8E2] px-1.5 py-1 text-[9px] font-bold text-[#C6533D]">Over budget</span>' : ''}</div><p class="mt-2 text-[11px] font-bold ${envelope.currentAmount < 0 ? 'text-[#D66D57]' : 'text-[#263548]'}">${formatMoney(envelope.currentAmount)} <span class="font-normal text-[#A1AAB4]">/ ${formatMoney(envelope.budgetedAmount)}</span></p><div class="mt-[17px] h-1.5 overflow-hidden rounded-full bg-[#EDF0ED]"><span class="block h-full rounded-full ${isOverBudget ? 'bg-[#EF4444]' : 'bg-[#56B994]'}" style="width: ${progressWidth}%"></span></div><div class="mt-2 text-[9px] ${isOverBudget ? 'font-bold text-[#C6533D]' : 'text-[#9CA6AF]'}">${statusLabel}</div>`;
+        envelopeGrid.append(card);
+      });
     }
+  }
 
-    const transactionList = document.querySelector('#recent-transactions');
-    if (transactionList) {
-      transactionList.replaceChildren();
-      if (dashboard.transactions.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'py-5 text-xs text-[#82909D]';
-        empty.textContent = 'No transactions yet.';
-        transactionList.append(empty);
-      } else {
-        dashboard.transactions.forEach((transaction) => {
-          const row = document.createElement('div');
-          row.className = 'flex min-h-[63px] items-center gap-3 border-b border-[#E8ECE8]';
-          const sign = transaction.type === 'income' ? '+' : '-';
-          row.innerHTML = `<span class="grid h-8 w-8 flex-none place-items-center rounded-md bg-[#E8F2FC] text-[17px] font-bold text-[#5C8FC5]">✦</span><div class="min-w-0 flex-1"><strong class="block truncate text-[11px] font-bold text-[#354356]">${transaction.description}</strong><small class="mt-1 block text-[9px] text-[#9AA4AE]">${transaction.type} <span class="mx-1 text-[#C2C8CD]">•</span> ${formatDate(transaction.date)}</small></div><strong class="whitespace-nowrap text-[11px] ${transaction.type === 'income' ? 'text-[#42A27E]' : 'text-[#D66D57]'}">${sign} ${formatMoney(transaction.amount)}</strong>`;
-          transactionList.append(row);
-        });
-      }
+  const transactionList = document.querySelector('#recent-transactions');
+  if (transactionList) {
+    transactionList.replaceChildren();
+    if (dashboard.transactions.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'py-5 text-xs text-[#82909D]';
+      empty.textContent = 'No transactions yet.';
+      transactionList.append(empty);
+    } else {
+      dashboard.transactions.forEach((transaction) => {
+        const row = document.createElement('div');
+        row.className = 'flex min-h-[63px] items-center gap-3 border-b border-[#E8ECE8]';
+        const sign = transaction.type === 'income' ? '+' : '-';
+        row.innerHTML = `<span class="grid h-8 w-8 flex-none place-items-center rounded-md bg-[#E8F2FC] text-[17px] font-bold text-[#5C8FC5]">✦</span><div class="min-w-0 flex-1"><strong class="block truncate text-[11px] font-bold text-[#354356]">${transaction.description}</strong><small class="mt-1 block text-[9px] text-[#9AA4AE]">${transaction.type} <span class="mx-1 text-[#C2C8CD]">•</span> ${formatDate(transaction.date)}</small></div><strong class="whitespace-nowrap text-[11px] ${transaction.type === 'income' ? 'text-[#42A27E]' : 'text-[#D66D57]'}">${sign} ${formatMoney(transaction.amount)}</strong>`;
+        transactionList.append(row);
+      });
     }
-  });
+  }
+});
 
-  const modalBackdrop = document.querySelector('.modal-backdrop');
-  const openButton = document.querySelector('[aria-label="Add transaction"]');
-  const closeButton = document.querySelector('.modal-close');
-  const closeModal = () => {
-    modalBackdrop?.setAttribute('aria-hidden', 'true');
-  };
+// Modal handling
+const modalBackdrop = document.querySelector('.modal-backdrop');
+const closeButton = document.querySelector('.modal-close');
+const closeModal = () => {
+  modalBackdrop?.setAttribute('aria-hidden', 'true');
+};
+closeButton?.addEventListener('click', closeModal);
+modalBackdrop?.addEventListener('click', (event) => {
+  if (event.target === modalBackdrop) closeModal();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeModal();
+});
 
-  openButton?.addEventListener('click', () => {
-    modalBackdrop?.setAttribute('aria-hidden', 'false');
-  });
-  closeButton?.addEventListener('click', closeModal);
-  modalBackdrop?.addEventListener('click', (event) => {
-    if (event.target === modalBackdrop) closeModal();
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeModal();
-  });
+// Sidebar handling
+const setSidebarOpen = (isOpen) => {
+  const sidebar = document.querySelector('[data-mobile-sidebar]');
+  const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
+  sidebar?.classList.toggle('is-open', isOpen);
+  sidebarBackdrop?.classList.toggle('is-open', isOpen);
+  sidebarBackdrop?.setAttribute('aria-hidden', String(!isOpen));
+  document.body.classList.toggle('sidebar-open', isOpen);
+};
 
-  document.querySelectorAll('.nav-item, .mobile-item').forEach((item) => item.addEventListener('click', () => {
-    const href = item.getAttribute('href');
-    document.querySelectorAll('.nav-item, .mobile-item').forEach((navItem) => navItem.classList.remove('bg-coral-50', 'text-coral-600'));
-    document.querySelectorAll(`[href="${href}"]`).forEach((navItem) => navItem.classList.add('bg-coral-50', 'text-coral-600'));
-  }));
+document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebarOpen(true));
+document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebarOpen(false));
+document.querySelector('[data-sidebar-backdrop]')?.addEventListener('click', () => setSidebarOpen(false));
+document.querySelectorAll('[data-mobile-sidebar] .nav-item').forEach((item) => item.addEventListener('click', () => setSidebarOpen(false)));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') setSidebarOpen(false);
+});
 
-  const sidebar = document.querySelector<HTMLElement>('[data-mobile-sidebar]');
-  const sidebarBackdrop = document.querySelector<HTMLElement>('[data-sidebar-backdrop]');
-  const setSidebarOpen = (isOpen: boolean) => {
-    sidebar?.classList.toggle('is-open', isOpen);
-    sidebarBackdrop?.classList.toggle('is-open', isOpen);
-    sidebarBackdrop?.setAttribute('aria-hidden', String(!isOpen));
-    document.body.classList.toggle('sidebar-open', isOpen);
-  };
-
-  document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebarOpen(true));
-  document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebarOpen(false));
-  sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
-  document.querySelectorAll('[data-mobile-sidebar] .nav-item').forEach((item) => item.addEventListener('click', () => setSidebarOpen(false)));
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setSidebarOpen(false);
-  });
+// Refresh dashboard on data change
+document.addEventListener('pocketflow:refresh-data', async () => {
+  const token = localStorage.getItem('authToken') ?? '';
+  const apiUrl = document.body.dataset.apiUrl ?? 'http://localhost:8787';
+  const response = await fetch(`${apiUrl}/api/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
+  const dashboard = await response.json();
+  if (dashboard.success) {
+    document.dispatchEvent(new CustomEvent('pocketflow:dashboard-ready', { detail: dashboard.data }));
+  }
+});
 </script>

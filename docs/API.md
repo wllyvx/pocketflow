@@ -175,9 +175,10 @@ For endpoints returning lists of resources, pagination details will be included 
       "amount": 45.75,
       "description": "Weekly grocery shopping",
       "date": "2023-10-26T18:00:00Z",
-      "envelopeId": "envelope-uuid-123", // Required for expense/income, optional for transfer (source/destination)
-      "sourceAccountId": "account-uuid-456", // Required for expense/transfer
-      "destinationAccountId": "account-uuid-789", // Required for transfer, optional for income
+      "envelopeId": "envelope-uuid-123", // Required for expense, optional for income/transfer
+      "destinationEnvelopeId": "envelope-uuid-789", // Optional (used for envelope-to-envelope transfer)
+      "sourceAccountId": "account-uuid-456", // Optional in MVP (Phase 1)
+      "destinationAccountId": "account-uuid-789", // Optional in MVP (Phase 1)
       "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg" // Optional
     }
     ```
@@ -192,7 +193,8 @@ For endpoints returning lists of resources, pagination details will be included 
         "description": "Weekly grocery shopping",
         "date": "2023-10-26T18:00:00Z",
         "envelopeId": "envelope-uuid-123",
-        "sourceAccountId": "account-uuid-456",
+        "destinationEnvelopeId": null,
+        "sourceAccountId": null,
         "destinationAccountId": null,
         "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
         "userId": "user-uuid-abc",
@@ -202,9 +204,9 @@ For endpoints returning lists of resources, pagination details will be included 
     ```
 *   **Status Codes:**
     *   `201 Created`: Transaction successfully added.
-    *   `400 Bad Request`: Invalid input data (e.g., missing required fields, invalid type).
+    *   `400 Bad Request`: Invalid input data (e.g., missing required fields, invalid type, non-positive amount).
     *   `401 Unauthorized`: Missing or invalid authentication token.
-    *   `404 Not Found`: Specified `envelopeId` or `accountId` does not exist for the user.
+    *   `404 Not Found`: Specified `envelopeId` does not exist for the user.
     *   `500 Internal Server Error`: An unexpected server error occurred.
 
 #### GET /transactions
@@ -231,9 +233,12 @@ For endpoints returning lists of resources, pagination details will be included 
           "description": "Weekly grocery shopping",
           "date": "2023-10-26T18:00:00Z",
           "envelopeId": "envelope-uuid-123",
-          "sourceAccountId": "account-uuid-456",
+          "destinationEnvelopeId": null,
+          "sourceAccountId": null,
           "destinationAccountId": null,
           "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
+          "envelopeName": "Groceries",
+          "envelopeColorHex": "#4CAF50",
           "userId": "user-uuid-abc",
           "createdAt": "2023-10-27T14:35:00Z"
         },
@@ -243,10 +248,13 @@ For endpoints returning lists of resources, pagination details will be included 
           "amount": 2000.00,
           "description": "Monthly Salary",
           "date": "2023-10-25T09:00:00Z",
-          "envelopeId": null, // Income might not be assigned to an envelope directly
+          "envelopeId": null,
+          "destinationEnvelopeId": null,
           "sourceAccountId": null,
-          "destinationAccountId": "account-uuid-456",
+          "destinationAccountId": null,
           "receiptImageUrl": null,
+          "envelopeName": null,
+          "envelopeColorHex": null,
           "userId": "user-uuid-abc",
           "createdAt": "2023-10-25T09:00:00Z"
         }
@@ -263,6 +271,106 @@ For endpoints returning lists of resources, pagination details will be included 
     *   `200 OK`: Successfully retrieved transactions.
     *   `400 Bad Request`: Invalid query parameters.
     *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `500 Internal Server Error`: An unexpected server error occurred.
+
+#### GET /transactions/:id
+
+*   **Description:** Retrieves details of a specific transaction owned by the authenticated user.
+*   **Auth Level:** Authenticated User
+*   **Path Parameters:**
+    *   `id` (string, required): The transaction UUID.
+*   **Request Body:** None
+*   **Response Body (200 OK):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "transaction-uuid-def",
+        "type": "expense",
+        "amount": 45.75,
+        "description": "Weekly grocery shopping",
+        "date": "2023-10-26T18:00:00Z",
+        "envelopeId": "envelope-uuid-123",
+        "destinationEnvelopeId": null,
+        "sourceAccountId": null,
+        "destinationAccountId": null,
+        "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
+        "envelopeName": "Groceries",
+        "envelopeColorHex": "#4CAF50",
+        "userId": "user-uuid-abc",
+        "createdAt": "2023-10-27T14:35:00Z"
+      }
+    }
+    ```
+*   **Status Codes:**
+    *   `200 OK`: Successfully retrieved transaction.
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `404 Not Found`: Transaction not found or does not belong to the authenticated user.
+    *   `500 Internal Server Error`: An unexpected server error occurred.
+
+#### PUT /transactions/:id
+
+*   **Description:** Updates an existing transaction and recalculates corresponding envelope balance(s).
+*   **Auth Level:** Authenticated User
+*   **Path Parameters:**
+    *   `id` (string, required): The transaction UUID.
+*   **Request Body (JSON):** Partial transaction update fields:
+    ```json
+    {
+      "amount": 60.00,
+      "description": "Updated grocery shopping",
+      "date": "2023-10-26T18:00:00Z",
+      "envelopeId": "envelope-uuid-123",
+      "destinationEnvelopeId": null,
+      "receiptImageUrl": null
+    }
+    ```
+*   **Response Body (200 OK):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "transaction-uuid-def",
+        "type": "expense",
+        "amount": 60.00,
+        "description": "Updated grocery shopping",
+        "date": "2023-10-26T18:00:00Z",
+        "envelopeId": "envelope-uuid-123",
+        "destinationEnvelopeId": null,
+        "sourceAccountId": null,
+        "destinationAccountId": null,
+        "receiptImageUrl": null,
+        "userId": "user-uuid-abc",
+        "createdAt": "2023-10-27T14:35:00Z",
+        "updatedAt": "2023-10-27T15:00:00Z"
+      }
+    }
+    ```
+*   **Status Codes:**
+    *   `200 OK`: Transaction successfully updated.
+    *   `400 Bad Request`: Invalid input data (e.g., non-positive amount, future date > 1 yr).
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `404 Not Found`: Transaction or referenced envelope not found.
+    *   `500 Internal Server Error`: An unexpected server error occurred.
+
+#### DELETE /transactions/:id
+
+*   **Description:** Deletes a transaction and restores envelope balances.
+*   **Auth Level:** Authenticated User
+*   **Path Parameters:**
+    *   `id` (string, required): The transaction UUID.
+*   **Request Body:** None
+*   **Response Body (200 OK):**
+    ```json
+    {
+      "success": true,
+      "message": "Transaction deleted successfully."
+    }
+    ```
+*   **Status Codes:**
+    *   `200 OK`: Transaction successfully deleted.
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `404 Not Found`: Transaction not found or does not belong to the user.
     *   `500 Internal Server Error`: An unexpected server error occurred.
 
 ### Plaid Integration

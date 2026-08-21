@@ -1,4 +1,4 @@
-{
+﻿{
   "version": "7",
   "dialect": "sqlite",
   "entries": [
@@ -7,6 +7,27 @@
       "version": "6",
       "when": 1787110229250,
       "tag": "0000_equal_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787150000000,
+      "tag": "0001_add_onboarding_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787180000000,
+      "tag": "0002_scope_category_names_to_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787206393313,
+      "tag": "0003_make_transaction_account_id_nullable",
       "breakpoints": true
     }
   ]

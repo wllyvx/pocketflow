@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { onboardingSchema } from "@pocketflow/shared";
 import { createDb } from "./db/client";
 import { categories, envelopes, transactions, users } from "./db/schema";
 import { requireAuth, type AuthVariables } from "./middleware/auth";
+import transactionsRouter from "./routes/transactions";
+import receiptsRouter from "./routes/receipts";
 
-type Bindings = {
+export type Bindings = {
   DB?: D1Database;
   DEV_AUTH_TOKEN: string;
   FRONTEND_ORIGIN?: string;
@@ -34,13 +36,18 @@ app.use("/api/*", cors({
     return "";
   },
   allowHeaders: ["Authorization", "Content-Type"],
-  allowMethods: ["GET", "POST", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
+
 app.use("/api/*", requireAuth);
+
 app.get("/api/hello", (context) => context.json({
   success: true,
   data: { message: "PocketFlow API is ready.", userId: context.get("userId") },
 }));
+
+// Mount transactions router
+app.route("/api/transactions", transactionsRouter);
 
 app.get("/api/users/me", async (context) => {
   const now = new Date();
@@ -87,27 +94,113 @@ app.get("/api/users/me", async (context) => {
 app.get("/api/dashboard", async (context) => {
   const database = context.env.DB ? createDb(context.env.DB) : undefined;
   if (!database) {
-    return context.json({ success: true, data: { availableToSpend: 0, monthlyIncome: 0, spent: 0, healthScore: 0, envelopes: [], transactions: [] } });
+    return context.json({
+      success: true,
+      data: {
+        availableToSpend: 0,
+        monthlyIncome: 0,
+        spent: 0,
+        healthScore: 0,
+        envelopes: [],
+        transactions: [],
+      },
+    });
   }
 
-  const user = await database.select().from(users).where(eq(users.auth0Id, context.get("auth0Id"))).limit(1).then((rows) => rows[0]);
+  const user = await database
+    .select()
+    .from(users)
+    .where(eq(users.auth0Id, context.get("auth0Id")))
+    .limit(1)
+    .then((rows) => rows[0]);
+
   if (!user) {
-    return context.json({ success: false, error: { code: "USER_NOT_FOUND", message: "Complete your profile setup first." } }, 404);
+    return context.json(
+      { success: false, error: { code: "USER_NOT_FOUND", message: "Complete your profile setup first." } },
+      404
+    );
   }
 
-  const userEnvelopes = await database.select().from(envelopes).where(eq(envelopes.userId, user.id));
-  const userTransactions = await database.select().from(transactions).where(eq(transactions.userId, user.id)).limit(10);
-  const monthlyIncome = userTransactions.filter((transaction) => transaction.type === "income").reduce((total, transaction) => total + transaction.amount, 0);
-  const spent = userTransactions.filter((transaction) => transaction.type === "expense").reduce((total, transaction) => total + transaction.amount, 0);
-  const availableToSpend = userEnvelopes.reduce((total, envelope) => total + envelope.currentAmount, 0);
-  const healthScore = userEnvelopes.length === 0 ? 0 : Math.round((userEnvelopes.filter((envelope) => envelope.currentAmount <= envelope.budgetedAmount).length / userEnvelopes.length) * 100);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const [userEnvelopes, monthTransactions, recentTransactions] = await Promise.all([
+    database.select().from(envelopes).where(eq(envelopes.userId, user.id)),
+    database
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, user.id),
+          gte(transactions.date, startOfMonth),
+          lte(transactions.date, endOfMonth)
+        )
+      ),
+    database
+      .select({
+        transaction: transactions,
+        envelopeName: envelopes.name,
+      })
+      .from(transactions)
+      .leftJoin(envelopes, eq(transactions.envelopeId, envelopes.id))
+      .where(eq(transactions.userId, user.id))
+      .orderBy(desc(transactions.date), desc(transactions.createdAt))
+      .limit(10),
+  ]);
+
+  const monthlyIncome = monthTransactions
+    .filter((tx) => tx.type === "income")
+    .reduce((total, tx) => total + tx.amount, 0);
+
+  const spent = monthTransactions
+    .filter((tx) => tx.type === "expense")
+    .reduce((total, tx) => total + tx.amount, 0);
+
+  const availableToSpend = userEnvelopes.reduce(
+    (total, env) => total + env.currentAmount,
+    0
+  );
+
+  const healthScore =
+    userEnvelopes.length === 0
+      ? 0
+      : Math.round(
+          (userEnvelopes.filter((env) => env.currentAmount >= 0).length /
+            userEnvelopes.length) *
+            100
+        );
+
+  const mappedTransactions = recentTransactions.map((r) => ({
+    id: r.transaction.id,
+    userId: r.transaction.userId,
+    type: r.transaction.type,
+    amount: r.transaction.amount,
+    description: r.transaction.description,
+    date:
+      r.transaction.date instanceof Date
+        ? r.transaction.date.toISOString()
+        : new Date(r.transaction.date).toISOString(),
+    envelopeId: r.transaction.envelopeId,
+    destinationEnvelopeId: r.transaction.destinationEnvelopeId,
+    receiptImageUrl: r.transaction.receiptUrl,
+    envelopeName: r.envelopeName ?? null,
+    isManual: Boolean(r.transaction.isManual),
+    createdAt:
+      r.transaction.createdAt instanceof Date
+        ? r.transaction.createdAt.toISOString()
+        : new Date(r.transaction.createdAt).toISOString(),
+  }));
 
   return context.json({
     success: true,
     data: {
-      availableToSpend, monthlyIncome, spent, healthScore,
+      availableToSpend,
+      monthlyIncome,
+      spent,
+      healthScore,
       envelopes: userEnvelopes,
-      transactions: userTransactions,
+      transactions: mappedTransactions,
     },
   });
 });
