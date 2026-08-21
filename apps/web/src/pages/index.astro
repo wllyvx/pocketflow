@@ -74,7 +74,8 @@ document.addEventListener('pocketflow:dashboard-ready', (event) => {
       envelopeGrid.append(empty);
     } else {
       dashboard.envelopes.forEach((envelope) => {
-        const percent = envelope.budgetedAmount > 0 ? Math.round((envelope.currentAmount / envelope.budgetedAmount) * 100) : 0;
+        const progressBaseAmount = envelope.progressBaseAmount ?? envelope.budgetedAmount;
+        const percent = progressBaseAmount > 0 ? Math.round((envelope.spentAmount / progressBaseAmount) * 100) : 0;
         const isOverBudget = envelope.currentAmount < 0 || percent >= 100;
         const statusLabel = isOverBudget ? 'Over budget' : `${Math.max(0, percent)}% used`;
         const progressWidth = isOverBudget ? 100 : Math.min(Math.max(percent, 0), 100);

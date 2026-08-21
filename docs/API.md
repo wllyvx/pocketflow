@@ -125,6 +125,7 @@ For endpoints returning lists of resources, pagination details will be included 
       }
     }
     ```
+    Each envelope in `data.envelopes` also includes `progressBaseAmount` and `spentAmount`. The frontend uses these values to calculate the current-cycle spending percentage; when `budgetedAmount` is zero, `progressBaseAmount` falls back to funds assigned through income or transfers.
 *   **Status Codes:** `200 OK`, `401 Unauthorized`, `404 Not Found`.
 
 ### Budget Envelopes
