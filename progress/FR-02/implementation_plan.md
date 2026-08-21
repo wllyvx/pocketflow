@@ -107,7 +107,6 @@ API client methods, interactive modals for Add/Edit/Delete, filterable transacti
 - Filter controls: Type filter pills (`All`, `Income`, `Expense`, `Transfer`), Envelope filter dropdown.
 - Transaction items: Type icons, envelope badge, formatted amount (`+ Rp` / `- Rp`), date/time.
 - Over-budget warning badges on transactions causing negative balances.
-- Envelope progress uses `spentAmount / progressBaseAmount`, falling back to cycle funding when `budgetedAmount` is zero.
 - Edit and Delete action triggers.
 - Delete confirmation modal dialog.
 - Pagination navigation (`Previous`, `Page X of Y`, `Next`).

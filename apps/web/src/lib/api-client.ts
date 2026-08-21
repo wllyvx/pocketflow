@@ -22,7 +22,7 @@ export type DashboardData = {
   monthlyIncome: number;
   spent: number;
   healthScore: number;
-  envelopes: Array<{ id: string; name: string; budgetedAmount: number; currentAmount: number; progressBaseAmount: number; spentAmount: number }>;
+  envelopes: Array<{ id: string; name: string; budgetedAmount: number; currentAmount: number }>;
   transactions: Array<{ id: string; description: string; amount: number; type: string; date: string }>;
 };
 

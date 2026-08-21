@@ -162,29 +162,6 @@ app.get("/api/dashboard", async (context) => {
     0
   );
 
-  const envelopeProgress = new Map<string, { fundedAmount: number; spentAmount: number }>();
-  for (const transaction of monthTransactions) {
-    if (transaction.envelopeId) {
-      const progress = envelopeProgress.get(transaction.envelopeId) ?? { fundedAmount: 0, spentAmount: 0 };
-      if (transaction.type === "income") progress.fundedAmount += transaction.amount;
-      if (transaction.type === "expense" || transaction.type === "transfer") progress.spentAmount += transaction.amount;
-      envelopeProgress.set(transaction.envelopeId, progress);
-    }
-    if (transaction.destinationEnvelopeId && transaction.type === "transfer") {
-      const progress = envelopeProgress.get(transaction.destinationEnvelopeId) ?? { fundedAmount: 0, spentAmount: 0 };
-      progress.fundedAmount += transaction.amount;
-      envelopeProgress.set(transaction.destinationEnvelopeId, progress);
-    }
-  }
-
-  const mappedEnvelopes = userEnvelopes.map((envelope) => ({
-    ...envelope,
-    progressBaseAmount: envelope.budgetedAmount > 0
-      ? envelope.budgetedAmount
-      : (envelopeProgress.get(envelope.id)?.fundedAmount ?? 0),
-    spentAmount: envelopeProgress.get(envelope.id)?.spentAmount ?? 0,
-  }));
-
   const healthScore =
     userEnvelopes.length === 0
       ? 0
@@ -222,7 +199,7 @@ app.get("/api/dashboard", async (context) => {
       monthlyIncome,
       spent,
       healthScore,
-      envelopes: mappedEnvelopes,
+      envelopes: userEnvelopes,
       transactions: mappedTransactions,
     },
   });
