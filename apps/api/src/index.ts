@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { onboardingSchema } from "@pocketflow/shared";
 import { createDb } from "./db/client";
 import { categories, envelopes, transactions, users } from "./db/schema";
@@ -8,6 +8,7 @@ import { requireAuth, type AuthVariables } from "./middleware/auth";
 import transactionsRouter from "./routes/transactions";
 import receiptsRouter from "./routes/receipts";
 import envelopesRouter from "./routes/envelopes";
+import { calculateAvailableToSpend } from "./services/envelope.service";
 
 export type Bindings = {
   DB?: D1Database;
@@ -127,7 +128,7 @@ app.get("/api/dashboard", async (context) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-  const [userEnvelopes, monthTransactions, recentTransactions] = await Promise.all([
+  const [userEnvelopes, monthTransactions, recentTransactions, availableToSpend] = await Promise.all([
     database.select().from(envelopes).where(eq(envelopes.userId, user.id)),
     database
       .select()
@@ -149,6 +150,7 @@ app.get("/api/dashboard", async (context) => {
       .where(eq(transactions.userId, user.id))
       .orderBy(desc(transactions.date), desc(transactions.createdAt))
       .limit(10),
+    calculateAvailableToSpend(database, user.id),
   ]);
 
   const monthlyIncome = monthTransactions
@@ -159,11 +161,6 @@ app.get("/api/dashboard", async (context) => {
     .filter((tx) => tx.type === "expense")
     .reduce((total, tx) => total + tx.amount, 0);
 
-  const availableToSpend = userEnvelopes.reduce(
-    (total, env) => total + env.currentAmount,
-    0
-  );
-
   const healthScore =
     userEnvelopes.length === 0
       ? 0
@@ -172,6 +169,24 @@ app.get("/api/dashboard", async (context) => {
             userEnvelopes.length) *
             100
         );
+
+  // Calculate totalSpent per envelope
+  const envelopeSpending = await Promise.all(
+    userEnvelopes.map(async (env) => {
+      const [summary] = await database
+        .select({
+          totalSpent: sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amount} else 0 end), 0)`,
+        })
+        .from(transactions)
+        .where(eq(transactions.envelopeId, env.id));
+      
+      return {
+        ...env,
+        totalSpent: Number(summary?.totalSpent ?? 0),
+        isOverBudget: Number(summary?.totalSpent ?? 0) > env.budgetedAmount,
+      };
+    })
+  );
 
   const mappedTransactions = recentTransactions.map((r) => ({
     id: r.transaction.id,
@@ -201,7 +216,7 @@ app.get("/api/dashboard", async (context) => {
       monthlyIncome,
       spent,
       healthScore,
-      envelopes: userEnvelopes,
+      envelopes: envelopeSpending,
       transactions: mappedTransactions,
     },
   });

@@ -73,10 +73,13 @@ function renderForm(transaction = null) {
         <input type="text" name="description" value="${transaction?.description ?? ''}" class="mt-1 block w-full border-gray-300 rounded-md" required /></label>
       <label class="block"><span class="text-sm font-medium text-gray-700">Date</span>
         <input type="date" name="date" value="${dateValue}" max="${maxDate.toISOString().slice(0, 10)}" class="mt-1 block w-full border-gray-300 rounded-md" required /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Envelope</span>
+      <label class="envelope-field block ${selectedType === 'income' ? 'hidden' : ''}"><span class="text-sm font-medium text-gray-700">Envelope</span>
         <select name="envelopeId" class="mt-1 block w-full border-gray-300 rounded-md">
           <option value="">No envelope</option>${envelopes.map(e => `<option value="${e.id}" ${transaction?.envelopeId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
         </select></label>
+      <div class="income-notice block ${selectedType === 'income' ? '' : 'hidden'} rounded-md bg-[#E8F7F0] p-3 text-xs text-[#10B981]">
+        <strong>💰 Income Info:</strong> Income will be added to your "Available to Spend" pool. Use the "Fill Envelope" feature to allocate funds to specific envelopes.
+      </div>
       <label class="destination-envelope block ${selectedType === 'transfer' ? '' : 'hidden'}"><span class="text-sm font-medium text-gray-700">Destination envelope</span>
         <select name="destinationEnvelopeId" class="mt-1 block w-full border-gray-300 rounded-md">
           <option value="">No destination</option>${envelopes.map(e => `<option value="${e.id}" ${transaction?.destinationEnvelopeId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
@@ -93,10 +96,14 @@ function renderForm(transaction = null) {
   contentDiv.innerHTML = formHtml;
   const form = document.getElementById('add-transaction-form');
   const typeInput = form.querySelector('input[name="type"]');
+  const envelopeField = form.querySelector('.envelope-field');
+  const incomeNotice = form.querySelector('.income-notice');
   const destinationField = form.querySelector('.destination-envelope');
   const typeButtons = form.querySelectorAll('.transaction-type');
   const updateType = (type) => {
     typeInput.value = type;
+    envelopeField.classList.toggle('hidden', type === 'income');
+    incomeNotice.classList.toggle('hidden', type !== 'income');
     destinationField.classList.toggle('hidden', type !== 'transfer');
     typeButtons.forEach((button) => {
       const active = button.dataset.type === type;
@@ -140,6 +147,11 @@ function renderForm(transaction = null) {
       maxDateValue.setFullYear(maxDateValue.getFullYear() + 1);
       if (new Date(`${date}T23:59:59`).getTime() > maxDateValue.getTime()) {
         formError.textContent = 'Date cannot be more than 1 year in the future.';
+        formError.classList.remove('hidden');
+        return;
+      }
+      if (type === 'income' && envelopeId) {
+        formError.textContent = 'Income transactions cannot be assigned to an envelope. Use Fill Envelope feature instead.';
         formError.classList.remove('hidden');
         return;
       }
