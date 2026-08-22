@@ -283,3 +283,9 @@ export interface EnvelopeItem {
   remainingAmount?: number;
   isOverBudget?: boolean;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                              Envelope Health                               */
+/* -------------------------------------------------------------------------- */
+
+export * from './envelope-health.js';
