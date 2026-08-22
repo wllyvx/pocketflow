@@ -8,7 +8,7 @@ import { requireAuth, type AuthVariables } from "./middleware/auth";
 import transactionsRouter from "./routes/transactions";
 import receiptsRouter from "./routes/receipts";
 import envelopesRouter from "./routes/envelopes";
-import { calculateAvailableToSpend } from "./services/envelope.service";
+import { calculateAvailableToSpend, listEnvelopes } from "./services/envelope.service";
 
 export type Bindings = {
   DB?: D1Database;
@@ -128,8 +128,9 @@ app.get("/api/dashboard", async (context) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+  // TODO: Optimize N+1 query pattern in listEnvelopes if performance becomes issue
   const [userEnvelopes, monthTransactions, recentTransactions, availableToSpend] = await Promise.all([
-    database.select().from(envelopes).where(eq(envelopes.userId, user.id)),
+    listEnvelopes(database, user.id),
     database
       .select()
       .from(transactions)
@@ -170,24 +171,6 @@ app.get("/api/dashboard", async (context) => {
             100
         );
 
-  // Calculate totalSpent per envelope
-  const envelopeSpending = await Promise.all(
-    userEnvelopes.map(async (env) => {
-      const [summary] = await database
-        .select({
-          totalSpent: sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amount} else 0 end), 0)`,
-        })
-        .from(transactions)
-        .where(eq(transactions.envelopeId, env.id));
-      
-      return {
-        ...env,
-        totalSpent: Number(summary?.totalSpent ?? 0),
-        isOverBudget: Number(summary?.totalSpent ?? 0) > env.budgetedAmount,
-      };
-    })
-  );
-
   const mappedTransactions = recentTransactions.map((r) => ({
     id: r.transaction.id,
     userId: r.transaction.userId,
@@ -216,7 +199,7 @@ app.get("/api/dashboard", async (context) => {
       monthlyIncome,
       spent,
       healthScore,
-      envelopes: envelopeSpending,
+      envelopes: userEnvelopes,
       transactions: mappedTransactions,
     },
   });

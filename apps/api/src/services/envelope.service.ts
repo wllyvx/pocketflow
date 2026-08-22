@@ -71,7 +71,33 @@ export async function listEnvelopes(db: Database, userId: string): Promise<Envel
     .where(eq(envelopes.userId, userId))
     .orderBy(asc(envelopes.createdAt), asc(envelopes.name));
 
-  return rows.map((row) => formatEnvelopeRow(row.envelope, row.categoryName));
+  // TODO: Optimize N+1 query pattern in listEnvelopes if performance becomes issue
+  const envelopesWithSummary = await Promise.all(
+    rows.map(async (row) => {
+      const [summary] = await db
+        .select({
+          relatedTransactionCount: count(),
+          totalSpent: sql<number>`coalesce(sum(case when ${transactions.type} = 'expense' then ${transactions.amount} else 0 end), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            or(eq(transactions.envelopeId, row.envelope.id), eq(transactions.destinationEnvelopeId, row.envelope.id))
+          )
+        );
+
+      // Field name 'isOverBudget' kept for backward compatibility; logic changed to reflect currentAmount < 0 (over-spending), not totalSpent > budget
+      return formatEnvelopeRow(row.envelope, row.categoryName, {
+        relatedTransactionCount: Number(summary?.relatedTransactionCount ?? 0),
+        totalSpent: Number(summary?.totalSpent ?? 0),
+        remainingAmount: row.envelope.currentAmount,
+        isOverBudget: row.envelope.currentAmount < 0,
+      });
+    })
+  );
+
+  return envelopesWithSummary;
 }
 
 export async function getEnvelopeById(db: Database, userId: string, id: string): Promise<EnvelopeItem | null> {
@@ -89,11 +115,12 @@ export async function getEnvelopeById(db: Database, userId: string, id: string):
       or(eq(transactions.envelopeId, id), eq(transactions.destinationEnvelopeId, id)),
     ));
 
+  // Field name 'isOverBudget' kept for backward compatibility; logic changed to reflect currentAmount < 0 (over-spending), not totalSpent > budget
   return formatEnvelopeRow(row.envelope, row.categoryName, {
     relatedTransactionCount: Number(summary?.relatedTransactionCount ?? 0),
     totalSpent: Number(summary?.totalSpent ?? 0),
     remainingAmount: row.envelope.currentAmount,
-    isOverBudget: Number(summary?.totalSpent ?? 0) > row.envelope.budgetedAmount,
+    isOverBudget: row.envelope.currentAmount < 0,
   });
 }
 
