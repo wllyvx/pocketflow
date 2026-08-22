@@ -78,19 +78,7 @@ Status: ${statusLabels[healthData.status]}`;
       ? `<span class="status-badge" style="background-color: ${healthData.badgeColor}; color: ${healthData.badgeTextColor};">${healthData.badgeText}</span>`
       : '';
     
-    return `
-      <div class="envelope-progress detailed">
-        <div class="progress-container">
-          <div class="health-bar-wrapper" data-tooltip="${tooltipContent.replace(/\n/g, '&#10;')}">
-            <div class="health-bar-bg">
-              <div class="health-bar-fill" style="width: ${isDisabled ? 0 : healthData.percentage}%; background-color: ${healthData.color};"></div>
-            </div>
-          </div>
-          ${badgeHtml}
-        </div>
-        <p class="percentage-text">${isDisabled ? 'N/A' : healthData.percentage.toFixed(0) + '%'}</p>
-      </div>
-    `;
+    return `<div class="envelope-progress detailed"><div class="progress-container"><div class="health-bar-wrapper" data-tooltip="${tooltipContent.replace(/\n/g, '&#10;')}"><div class="health-bar-bg"><div class="health-bar-fill" style="width: ${isDisabled ? 0 : healthData.percentage}%; background-color: ${healthData.color};"></div></div></div>${badgeHtml}</div><p class="percentage-text">${isDisabled ? 'N/A' : healthData.percentage.toFixed(0) + '%'}</p></div>`;
   };
 
   const render = () => {
@@ -156,7 +144,7 @@ Status: ${statusLabels[healthData.status]}`;
   document.addEventListener('pocketflow:refresh-data', () => load().catch((value) => show(errorBox, value instanceof Error ? value.message : 'Unable to refresh envelopes.')));
 </script>
 
-<style>
+<style is:global>
   .envelope-progress {
     width: 100%;
   }
