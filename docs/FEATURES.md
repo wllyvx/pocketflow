@@ -91,9 +91,21 @@ A core feature enabling users to allocate funds into digital "envelopes" for spe
 *   Users shall be able to transfer funds from one envelope to another.
 *   Users shall be able to modify the name or budget of an envelope.
 *   Users shall be able to delete an envelope, with options to reallocate remaining funds or associated transactions.
+*   Each envelope shall display a "health bar" representing its remaining funds, with color thresholds: green (more than 30% remaining), yellow (1-30% remaining), red (0% = depleted), purple (surplus: allocated more than budget), and red with an "OVER SPENDING" badge (negative balance).
+*   The health bar shall show status badges for distinct states: "SURPLUS" (current > budget), "OVER SPENDING" (current < 0), and "Not Funded" (envelope created but not yet allocated funds).
+*   Hovering over the health bar shall display a tooltip showing the budgeted amount, current remaining, spent amount, health percentage, and status label.
+
+The health bar can be in one of six distinct states:
+
+1. **Healthy** — green bar; more than 30% of the budget remains.
+2. **Low** — amber/yellow bar; 1–30% of the budget remains (warning).
+3. **Depleted** — red bar at 0%; budget is fully used but not yet overspent.
+4. **Over Spending** — red bar at 0% with an "OVER SPENDING" badge; balance is negative (`currentAmount < 0`).
+5. **Surplus** — purple/indigo bar capped at 100% with a "SURPLUS" badge; more funds were allocated than the budgeted amount.
+6. **Not Funded** — gray bar at 0% with a "Not Funded" badge; the envelope exists but has not yet been allocated any funds.
 
 ### Edge Cases
-*   User attempts to spend more than available in an envelope (overspending).
+*   User attempts to spend more than available in an envelope (over-spending).
 *   User deletes an envelope with a non-zero balance.
 *   User attempts to create an envelope with a duplicate name.
 *   User tries to fill envelopes without sufficient "Available to Spend" funds.
@@ -104,21 +116,21 @@ Provides a modern, slick, and interactive overview of the user's financial healt
 
 ### User Stories
 *   As a user, I want to see my total "Available to Spend" at a glance on the dashboard.
-*   As a user, I want visual progress bars for each envelope that change color based on spending, so I can quickly see my budget status.
+*   As a user, I want visual health bars for each envelope that change color based on remaining funds, so I can quickly see my budget status.
 *   As a user, I want to see a "Financial Health" score or ring that reflects my budgeting adherence and overall financial progress.
 *   As a user, I want to quickly access my recent transactions from the dashboard.
 *   As a user, I want the dashboard to feel engaging and motivating.
 
 ### Acceptance Criteria
 *   The dashboard shall prominently display the user's current "Available to Spend" amount.
-*   Each active budget envelope shall have a visual progress bar indicating spent vs. budgeted amount.
-*   Progress bars shall visually change (e.g., color from green to yellow to red) as the envelope approaches its limit.
+*   Each active budget envelope shall have a visual health bar indicating remaining vs. budgeted amount.
+*   Health bars shall visually deplete and change color (green → yellow → red) as the envelope's funds are spent.
 *   A "Financial Health" metric (score or visual indicator) shall be displayed, reflecting budgeting performance.
 *   The dashboard shall include a section for recently added or imported transactions.
 *   The UI/UX of the dashboard shall be modern, intuitive, and visually appealing.
 
 ### Edge Cases
-*   No envelopes are created, resulting in an empty progress bar section.
+*   No envelopes are created, resulting in an empty health bar section.
 *   "Available to Spend" becomes negative due to overspending.
 *   Financial Health score calculation needs to handle edge cases like new users with no history.
 

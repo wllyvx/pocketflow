@@ -49,7 +49,7 @@ Fitur berikut **DITUNDA** ke fase berikutnya (lihat ROADMAP.md):
 - Validasi: amount harus > 0, tanggal tidak boleh lebih dari 1 tahun ke depan.
 - **Acceptance Criteria:**
   - Transaksi baru langsung memperbarui saldo envelope terkait dan "Available to Spend".
-  - Transaksi expense yang menyebabkan overspending pada envelope tetap tersimpan, tapi UI menampilkan indikator over-budget.
+  - Transaksi expense yang menyebabkan overspending pada envelope tetap tersimpan, tapi UI menampilkan indikator over-spending.
 
 ### FR-03: Envelope Budgeting System
 - User dapat membuat, mengedit, menghapus envelope (nama unik per user, budget amount, reset frequency: monthly/weekly/once).
@@ -59,11 +59,14 @@ Fitur berikut **DITUNDA** ke fase berikutnya (lihat ROADMAP.md):
 - **Acceptance Criteria:**
   - Tidak bisa membuat envelope dengan nama duplikat (per user).
   - Fill envelope gagal dengan pesan jelas jika dana "Available to Spend" tidak cukup.
+  - Setiap envelope menampilkan **health bar** yang merepresentasikan sisa dana: hijau (sisa >30%), kuning (sisa 1-30%), merah (0% = depleted/habis), ungu (surplus: saldo > budget), dan merah dengan badge "OVER SPENDING" bila saldo negatif (over-spending).
+  - Envelope yang dibuat namun belum di-fill menampilkan status "Not Funded" (bar abu-abu, tanpa badge).
+  - Tooltip health bar menampilkan informasi budget, current, spent, persen health, dan status label.
 
 ### FR-04: Gamified Dashboard
 - Menampilkan "Available to Spend" secara prominent.
-- Progress bar per envelope dengan perubahan warna: hijau (<70%), kuning (70-99%), merah (≥100%).
-- "Financial Health Score" — formula awal MVP: kombinasi dari (a) % envelope yang tidak over-budget bulan ini, (b) konsistensi pencatatan transaksi (hari aktif/30 hari). Detail formula didefinisikan saat implementasi, tapi harus deterministik dan dapat dijelaskan ke user.
+- **Health bar** per envelope dengan perubahan warna: hijau (sisa >30%), kuning (sisa 1-30%), merah (0% = depleted), plus badge "SURPLUS" bila saldo melebihi budget dan badge "OVER SPENDING" bila saldo negatif (over-spending).
+- "Financial Health Score" — formula awal MVP: kombinasi dari (a) % envelope yang tidak over-spending bulan ini, (b) konsistensi pencatatan transaksi (hari aktif/30 hari). Detail formula didefinisikan saat implementasi, tapi harus deterministik dan dapat dijelaskan ke user.
 - Daftar transaksi terbaru (5-10 item terakhir).
 - **Acceptance Criteria:**
   - Dashboard tetap render dengan baik (empty state) untuk user baru tanpa envelope/transaksi.

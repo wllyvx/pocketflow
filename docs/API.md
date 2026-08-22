@@ -135,9 +135,62 @@ All envelope endpoints require authentication and use the standard success/error
 
 Returns all envelopes owned by the authenticated user, ordered by creation date and name. Request body: none. Success response: `200 { "success": true, "data": [EnvelopeItem] }`. Possible errors: `401 UNAUTHORIZED`, `404 USER_NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
 
+Each `EnvelopeItem` in the response includes the following key fields:
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `id` | string | Unique envelope identifier. |
+| `name` | string | Envelope display name. |
+| `categoryId` | string | Associated category ID. |
+| `budgetedAmount` | number | Total budget allocated to the envelope for the current cycle. |
+| `currentAmount` | number | **Remaining balance** in the envelope. Can be negative when over-spending. |
+| `totalSpent` | number | Total expense amount logged against the envelope (`budgetedAmount - currentAmount`). |
+| `remainingAmount` | number | Remaining balance (alias of `currentAmount`). |
+| `isOverBudget` | boolean | **Now indicates `currentAmount < 0`** (negative balance / over-spending), not `totalSpent > budgetedAmount` as before. See note below. |
+| `relatedTransactionCount` | number | Count of transactions linked to the envelope. |
+
+> **Note — `isOverBudget` semantics changed:** `isOverBudget` now indicates `currentAmount < 0` (negative balance / over-spending), not `totalSpent > budgetedAmount` as before. The field name is kept for backward compatibility; new clients should treat `isOverBudget === true` as "envelope is over-spending".
+
+Example `EnvelopeItem`:
+
+```json
+{
+  "id": "envelope-uuid-123",
+  "name": "Groceries",
+  "categoryId": "category-uuid-123",
+  "budgetedAmount": 1000000,
+  "currentAmount": 300000,
+  "totalSpent": 700000,
+  "remainingAmount": 300000,
+  "isOverBudget": false,
+  "relatedTransactionCount": 5
+}
+```
+
 #### GET /api/envelopes/:id
 
 Returns one envelope, including category and spending summary: `relatedTransactionCount`, `totalSpent`, `remainingAmount`, and `isOverBudget`. Request body: none. Possible errors: `401 UNAUTHORIZED`, `404 NOT_FOUND`, `503 DATABASE_UNAVAILABLE`.
+
+Example response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "envelope-uuid-123",
+    "name": "Groceries",
+    "categoryId": "category-uuid-123",
+    "budgetedAmount": 1000000,
+    "currentAmount": -200000,
+    "totalSpent": 1200000,
+    "remainingAmount": -200000,
+    "isOverBudget": true,
+    "relatedTransactionCount": 6
+  }
+}
+```
+
+> `totalSpent` is the aggregated expense total for the envelope; `currentAmount` (and its alias `remainingAmount`) is the remaining balance, which goes negative when over-spending. `isOverBudget` is `true` when `currentAmount < 0` (see the note at `GET /api/envelopes`).
 
 #### GET /api/envelopes/:id/delete-preview
 

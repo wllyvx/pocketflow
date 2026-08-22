@@ -151,6 +151,8 @@ Implements the core envelope budgeting system, representing a budget for a speci
 | `createdAt` | DateTime | Default: NOW | Timestamp when the envelope record was created. |
 | `updatedAt` | DateTime | Default: NOW, On Update: NOW | Timestamp of the last update to the envelope record. |
 
+> **Note — `currentAmount` semantics:** `currentAmount` represents the **remaining balance** in the envelope, not the amount already spent. The spent amount is calculated as `budgetedAmount - currentAmount`. A negative `currentAmount` indicates over-spending (funds have exceeded the budgeted amount).
+
 ### Transaction
 
 Records individual financial transactions, whether imported from Plaid or manually entered.

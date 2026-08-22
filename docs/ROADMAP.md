@@ -29,7 +29,7 @@ Tujuan: aplikasi yang benar-benar bisa dipakai untuk mencatat keuangan manual se
 - [ ] Halaman daftar & form tambah/edit transaksi (USER_FLOW.md §3).
 
 **1c. Dashboard**
-- [ ] "Available to Spend" + progress bar envelope dengan color-coding (FR-04).
+- [ ] "Available to Spend" + health bar envelope dengan color-coding (FR-04).
 - [ ] Financial Health Score — finalisasi formula (lihat Open Question di REQUIREMENTS.md) lalu implementasi.
 - [ ] Empty states untuk user baru.
 
