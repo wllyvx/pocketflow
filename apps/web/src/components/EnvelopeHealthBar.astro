@@ -1,0 +1,183 @@
+---
+import { calculateEnvelopeHealth } from '@pocketflow/shared';
+
+interface Props {
+  budgetedAmount: number;
+  currentAmount: number;
+  variant?: 'compact' | 'detailed';
+  showBadge?: boolean;
+  showTooltip?: boolean;
+}
+
+const { 
+  budgetedAmount, 
+  currentAmount, 
+  variant = 'detailed',
+  showBadge = variant === 'detailed',
+  showTooltip = true
+} = Astro.props;
+
+// Calculate health data
+const healthData = calculateEnvelopeHealth(budgetedAmount, currentAmount);
+
+// Format currency
+const formatMoney = (amount: number) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`;
+
+// Status label mapping for tooltip
+const statusLabels: Record<string, string> = {
+  'surplus': 'Surplus',
+  'healthy': 'Healthy',
+  'low': 'Low',
+  'depleted': 'Depleted',
+  'over-spending': 'Over Spending',
+  'not-funded': 'Not Funded',
+};
+
+// Build tooltip content
+const tooltipContent = `💰 Budget: ${formatMoney(budgetedAmount)}
+💵 Current: ${formatMoney(currentAmount)}
+💸 Spent: ${formatMoney(healthData.spent)}
+📊 Health: ${healthData.percentage.toFixed(1)}%
+---
+Status: ${statusLabels[healthData.status]}`;
+
+// Handle edge case: zero budgeted amount
+const isDisabled = budgetedAmount === 0;
+---
+
+<div class={`envelope-progress ${variant === 'compact' ? 'compact' : 'detailed'}`}>
+  <div class="progress-container">
+    {showTooltip && !isDisabled ? (
+      <div class="health-bar-wrapper" data-tooltip={tooltipContent}>
+        <div class="health-bar-bg">
+          <div 
+            class="health-bar-fill" 
+            style={`width: ${healthData.percentage}%; background-color: ${healthData.color};`}
+          ></div>
+        </div>
+      </div>
+    ) : (
+      <div class="health-bar-bg">
+        <div 
+          class="health-bar-fill" 
+          style={`width: ${isDisabled ? 0 : healthData.percentage}%; background-color: ${healthData.color};`}
+        ></div>
+      </div>
+    )}
+    
+    {showBadge && healthData.showBadge && (
+      <span 
+        class="status-badge" 
+        style={`background-color: ${healthData.badgeColor}; color: ${healthData.badgeTextColor};`}
+      >
+        {healthData.badgeText}
+      </span>
+    )}
+  </div>
+  
+  {isDisabled ? (
+    <p class="percentage-text">N/A</p>
+  ) : (
+    <p class="percentage-text">{healthData.percentage.toFixed(0)}%</p>
+  )}
+</div>
+
+<style>
+  .envelope-progress {
+    width: 100%;
+  }
+
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .health-bar-wrapper {
+    position: relative;
+    flex: 1;
+  }
+
+  .health-bar-bg {
+    height: 6px; /* h-1.5 */
+    width: 100%;
+    border-radius: 9999px; /* rounded-full */
+    background-color: #EDF0ED;
+    overflow: hidden;
+  }
+
+  .health-bar-fill {
+    height: 100%;
+    border-radius: 9999px; /* rounded-full */
+    transition: width 0.3s ease-out;
+  }
+
+  .status-badge {
+    border-radius: 4px; /* rounded */
+    padding: 4px 6px; /* px-1.5 py-1 */
+    font-size: 9px; /* text-[9px] */
+    font-weight: 700; /* font-bold */
+    white-space: nowrap;
+  }
+
+  .percentage-text {
+    margin-top: 0.5rem; /* mt-2 */
+    font-size: 9px; /* text-[9px] */
+    color: #9CA6AF;
+  }
+
+  /* Tooltip styles */
+  .health-bar-wrapper::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1F2937; /* dark background */
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre-line;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+    z-index: 10;
+    min-width: 200px;
+    text-align: left;
+  }
+
+  .health-bar-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1F2937;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+    z-index: 10;
+  }
+
+  .health-bar-wrapper:hover::before,
+  .health-bar-wrapper:hover::after {
+    opacity: 1;
+  }
+
+  /* Compact variant adjustments */
+  .envelope-progress.compact .progress-container {
+    gap: 0.25rem;
+  }
+
+  .envelope-progress.compact .percentage-text {
+    margin-top: 0.25rem;
+  }
+
+  /* When health-bar-wrapper is not used (no tooltip), make health-bar-bg flex: 1 */
+  .progress-container > .health-bar-bg {
+    flex: 1;
+  }
+</style>
