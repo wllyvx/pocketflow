@@ -41,15 +41,47 @@ import '../styles/global.css';
   </body>
 </html>
 
-<script type="module" is:inline>
+<script>
+import { calculateEnvelopeHealth } from '@pocketflow/shared';
+import type { EnvelopeItem, TransactionItem } from '@pocketflow/shared';
+
 // Helper functions
-const formatMoney = (amount) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`;
-const formatDate = (value) => new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+const formatMoney = (amount: number) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`;
+const formatDate = (value: string) => new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+
+// Render compact health bar (no badges, just color and percentage)
+const renderCompactHealthBar = (budgetedAmount: number, currentAmount: number): string => {
+  const healthData = calculateEnvelopeHealth(budgetedAmount, currentAmount);
+  const isDisabled = budgetedAmount === 0;
+  
+  return `
+    <div class="envelope-progress compact">
+      <div class="progress-container">
+        <div class="health-bar-bg">
+          <div 
+            class="health-bar-fill" 
+            style="width: ${isDisabled ? 0 : healthData.percentage}%; background-color: ${healthData.color};"
+          ></div>
+        </div>
+      </div>
+      <p class="percentage-text">${isDisabled ? 'N/A' : healthData.percentage.toFixed(0) + '%'}</p>
+    </div>
+  `;
+};
+
+interface DashboardData {
+  availableToSpend: number;
+  monthlyIncome: number;
+  spent: number;
+  healthScore: number;
+  envelopes: EnvelopeItem[];
+  transactions: TransactionItem[];
+}
 
 // Dashboard rendering
 document.addEventListener('pocketflow:dashboard-ready', (event) => {
-  const dashboard = event.detail;
-  const setText = (selector, value) => {
+  const dashboard = (event as CustomEvent<DashboardData>).detail;
+  const setText = (selector: string, value: string) => {
     const element = document.querySelector(selector);
     if (element) element.textContent = value;
   };
@@ -63,7 +95,7 @@ document.addEventListener('pocketflow:dashboard-ready', (event) => {
   setText('#rhythm-spending', formatMoney(dashboard.spent));
   setText('#health-score', `${dashboard.healthScore}/100`);
   setText('#health-label', dashboard.healthScore >= 70 ? 'Looking good' : dashboard.healthScore > 0 ? 'Needs attention' : 'No data yet');
-  const healthBar = document.querySelector('#health-bar');
+  const healthBar = document.querySelector('#health-bar') as HTMLElement | null;
   if (healthBar) healthBar.style.width = `${dashboard.healthScore}%`;
 
   const envelopeGrid = document.querySelector('#envelope-grid');
@@ -75,15 +107,12 @@ document.addEventListener('pocketflow:dashboard-ready', (event) => {
       empty.textContent = 'No envelopes yet. Complete onboarding or create one to get started.';
       envelopeGrid.append(empty);
     } else {
-      dashboard.envelopes.forEach((envelope) => {
-        const totalSpent = envelope.totalSpent ?? 0;
-        const percent = envelope.budgetedAmount > 0 ? Math.round((totalSpent / envelope.budgetedAmount) * 100) : 0;
-        const isOverBudget = totalSpent > envelope.budgetedAmount;
-        const statusLabel = isOverBudget ? 'Over budget' : `${Math.max(0, percent)}% used`;
-        const progressWidth = isOverBudget ? 100 : Math.min(Math.max(percent, 0), 100);
+      dashboard.envelopes.forEach((envelope: EnvelopeItem) => {
+        const healthData = calculateEnvelopeHealth(envelope.budgetedAmount, envelope.currentAmount);
+        const isOverBudget = healthData.status === 'over-spending';
         const card = document.createElement('article');
         card.className = `min-h-[182px] rounded-lg border ${isOverBudget ? 'border-[#F5C1B1]' : 'border-[#E8EBE6]'} bg-white p-[19px_18px]`;
-        card.innerHTML = `<div class="flex items-center justify-between"><span class="grid h-[31px] w-[31px] place-items-center rounded-md ${isOverBudget ? 'bg-[#FDE8E2] text-[#D66D57]' : 'bg-[#E0F4ED] text-[#318C76]'} text-lg font-bold">✦</span><span class="h-1.5 w-1.5 rounded-full ${isOverBudget ? 'bg-[#EF4444]' : 'bg-[#58BB91]'}"></span></div><div class="mt-[15px] flex items-start justify-between gap-2"><h3 class="font-display text-[13px] font-semibold text-[#334154]">${envelope.name}</h3>${isOverBudget ? '<span class="whitespace-nowrap rounded bg-[#FDE8E2] px-1.5 py-1 text-[9px] font-bold text-[#C6533D]">Over budget</span>' : ''}</div><p class="mt-2 text-[11px] font-bold ${envelope.currentAmount < 0 ? 'text-[#D66D57]' : 'text-[#263548]'}">${formatMoney(envelope.currentAmount)} <span class="font-normal text-[#A1AAB4]">/ ${formatMoney(envelope.budgetedAmount)}</span></p><div class="mt-[17px] h-1.5 overflow-hidden rounded-full bg-[#EDF0ED]"><span class="block h-full rounded-full ${isOverBudget ? 'bg-[#EF4444]' : 'bg-[#56B994]'}" style="width: ${progressWidth}%"></span></div><div class="mt-2 text-[9px] ${isOverBudget ? 'font-bold text-[#C6533D]' : 'text-[#9CA6AF]'}">${statusLabel}</div>`;
+        card.innerHTML = `<div class="flex items-center justify-between"><span class="grid h-[31px] w-[31px] place-items-center rounded-md ${isOverBudget ? 'bg-[#FDE8E2] text-[#D66D57]' : 'bg-[#E0F4ED] text-[#318C76]'} text-lg font-bold">✦</span><span class="h-1.5 w-1.5 rounded-full ${isOverBudget ? 'bg-[#EF4444]' : 'bg-[#58BB91]'}"></span></div><div class="mt-[15px]"><h3 class="font-display text-[13px] font-semibold text-[#334154]">${envelope.name}</h3></div><p class="mt-2 text-[11px] font-bold ${envelope.currentAmount < 0 ? 'text-[#D66D57]' : 'text-[#263548]'}">${formatMoney(envelope.currentAmount)} <span class="font-normal text-[#A1AAB4]">/ ${formatMoney(envelope.budgetedAmount)}</span></p><div class="mt-[17px]">${renderCompactHealthBar(envelope.budgetedAmount, envelope.currentAmount)}</div>`;
         envelopeGrid.append(card);
       });
     }
@@ -98,7 +127,7 @@ document.addEventListener('pocketflow:dashboard-ready', (event) => {
       empty.textContent = 'No transactions yet.';
       transactionList.append(empty);
     } else {
-      dashboard.transactions.forEach((transaction) => {
+      dashboard.transactions.forEach((transaction: TransactionItem) => {
         const row = document.createElement('div');
         row.className = 'flex min-h-[63px] items-center gap-3 border-b border-[#E8ECE8]';
         const sign = transaction.type === 'income' ? '+' : '-';
@@ -124,7 +153,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 // Sidebar handling
-const setSidebarOpen = (isOpen) => {
+const setSidebarOpen = (isOpen: boolean) => {
   const sidebar = document.querySelector('[data-mobile-sidebar]');
   const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
   sidebar?.classList.toggle('is-open', isOpen);
@@ -152,3 +181,46 @@ document.addEventListener('pocketflow:refresh-data', async () => {
   }
 });
 </script>
+
+<style is:global>
+  /* Compact health bar styles for dashboard */
+  .envelope-progress {
+    width: 100%;
+  }
+
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .health-bar-bg {
+    height: 6px;
+    width: 100%;
+    border-radius: 9999px;
+    background-color: #EDF0ED;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .health-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.3s ease-out;
+  }
+
+  .percentage-text {
+    margin-top: 0.5rem;
+    font-size: 9px;
+    color: #9CA6AF;
+  }
+
+  /* Compact variant adjustments */
+  .envelope-progress.compact .progress-container {
+    gap: 0.25rem;
+  }
+
+  .envelope-progress.compact .percentage-text {
+    margin-top: 0.25rem;
+  }
+</style>
