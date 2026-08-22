@@ -240,13 +240,17 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
       "amount": 45.75,
       "description": "Weekly grocery shopping",
       "date": "2023-10-26T18:00:00Z",
-      "envelopeId": "envelope-uuid-123", // Required for expense, optional for income/transfer
-      "destinationEnvelopeId": "envelope-uuid-789", // Optional (used for envelope-to-envelope transfer)
+      "envelopeId": "envelope-uuid-123", // Required for expense and transfer (source), MUST NOT be provided for income
+      "destinationEnvelopeId": "envelope-uuid-789", // Required for transfer (destination), optional otherwise
       "sourceAccountId": "account-uuid-456", // Optional in MVP (Phase 1)
       "destinationAccountId": "account-uuid-789", // Optional in MVP (Phase 1)
       "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg" // Optional
     }
     ```
+*   **Important Notes:**
+    *   **Income transactions:** `envelopeId` MUST NOT be provided. Income is added to the "Available to Spend" pool. To allocate income to an envelope, use the "Fill Envelope" endpoint (`POST /envelopes/:id/fill`).
+    *   **Expense transactions:** `envelopeId` is required. The amount will be deducted from the specified envelope.
+    *   **Transfer transactions:** Both `envelopeId` (source) and `destinationEnvelopeId` are required.
 *   **Response Body (201 Created):**
     ```json
     {
@@ -269,10 +273,13 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
     ```
 *   **Status Codes:**
     *   `201 Created`: Transaction successfully added.
-    *   `400 Bad Request`: Invalid input data (e.g., missing required fields, invalid type, non-positive amount).
+    *   `400 Bad Request`: Invalid input data (e.g., missing required fields, invalid type, non-positive amount, providing envelopeId for income transactions).
     *   `401 Unauthorized`: Missing or invalid authentication token.
     *   `404 Not Found`: Specified `envelopeId` does not exist for the user.
     *   `500 Internal Server Error`: An unexpected server error occurred.
+*   **Error Codes:**
+    *   `INVALID_INPUT`: Income transactions cannot be assigned to an envelope, or other validation failures.
+    *   `NOT_FOUND`: Envelope not found for the authenticated user.
 
 #### GET /transactions
 

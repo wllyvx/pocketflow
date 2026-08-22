@@ -190,27 +190,15 @@ export async function createTransaction(
       })
       .where(eq(envelopes.id, envelope.id));
   } else if (input.type === "income") {
+    // Income transactions should NOT directly modify envelope balance
+    // They only contribute to "Available to Spend" pool
+    // Users must use "Fill Envelope" feature to allocate income to envelopes
     if (input.envelopeId) {
-      const [envelope] = await db
-        .select()
-        .from(envelopes)
-        .where(and(eq(envelopes.id, input.envelopeId), eq(envelopes.userId, userId)))
-        .limit(1);
-
-      if (!envelope) {
-        throw new ServiceError("NOT_FOUND", "Envelope not found.", 404);
-      }
-
-      envelopeName = envelope.name;
-      categoryId = envelope.categoryId;
-
-      await db
-        .update(envelopes)
-        .set({
-          currentAmount: envelope.currentAmount + input.amount,
-          updatedAt: now,
-        })
-        .where(eq(envelopes.id, envelope.id));
+      throw new ServiceError(
+        "INVALID_INPUT",
+        "Income transactions cannot be assigned to an envelope. Use Fill Envelope feature instead.",
+        400
+      );
     }
   } else if (input.type === "transfer") {
     if (!input.envelopeId || !input.destinationEnvelopeId) {

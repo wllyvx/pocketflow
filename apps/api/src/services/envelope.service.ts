@@ -93,7 +93,7 @@ export async function getEnvelopeById(db: Database, userId: string, id: string):
     relatedTransactionCount: Number(summary?.relatedTransactionCount ?? 0),
     totalSpent: Number(summary?.totalSpent ?? 0),
     remainingAmount: row.envelope.currentAmount,
-    isOverBudget: row.envelope.currentAmount < 0 || row.envelope.currentAmount > row.envelope.budgetedAmount,
+    isOverBudget: Number(summary?.totalSpent ?? 0) > row.envelope.budgetedAmount,
   });
 }
 

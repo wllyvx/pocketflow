@@ -81,6 +81,13 @@ export const createTransactionSchema = z
     destinationAccountId: z.string().trim().min(1).nullable().optional(),
   })
   .superRefine((input, ctx) => {
+    if (input.type === "income" && input.envelopeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["envelopeId"],
+        message: "Income transactions cannot be assigned to an envelope. Use Fill Envelope feature instead.",
+      });
+    }
     if (input.type === "expense" && (!input.envelopeId || input.envelopeId.trim() === "")) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
