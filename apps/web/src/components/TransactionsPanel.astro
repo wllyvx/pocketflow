@@ -158,9 +158,9 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <section class="mt-6">
-  <div class="flex justify-between items-center mb-4">
+  <div class="flex justify-between items-center mb-4 max-[680px]:flex-col max-[680px]:items-stretch max-[680px]:gap-2">
     <div id="transactions-filters" class="flex gap-2"></div>
-    <button class="px-3 py-1 text-sm bg-coral-500 text-white rounded" onclick="document.dispatchEvent(new CustomEvent('pocketflow:open-add-transaction'))">+ Add</button>
+    <button class="px-3 py-1 text-sm bg-coral-500 text-white rounded max-[680px]:w-full max-[680px]:text-center" onclick="document.dispatchEvent(new CustomEvent('pocketflow:open-add-transaction'))">+ Add</button>
   </div>
   <div id="transactions-list"></div>
   <div id="transactions-pagination" class="flex justify-between items-center mt-2 text-xs"></div>
