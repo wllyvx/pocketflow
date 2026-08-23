@@ -87,6 +87,7 @@ import {
   type FillEnvelopeInput,
   type TransferEnvelopeInput,
   type UpdateEnvelopeInput,
+  type AchievementItem,
 } from "@pocketflow/shared";
 
 export type EnvelopeDeletePreview = {
@@ -136,6 +137,10 @@ export async function deleteEnvelope(token: string, id: string, input: DeleteEnv
   const parsed = deleteEnvelopeSchema.safeParse(input);
   if (!parsed.success) throw new Error(`Invalid envelope delete input: ${parsed.error.message}`);
   return request<{ success: true; message: string }>(`/api/envelopes/${id}`, token, { method: "DELETE", body: JSON.stringify(parsed.data) });
+}
+
+export async function getAchievements(token: string) {
+  return request<{ success: true; data: AchievementItem[] }>("/api/achievements", token);
 }
 
 /** Retrieve paginated list of transactions */

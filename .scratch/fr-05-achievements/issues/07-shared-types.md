@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 (needs achievement definitions structure)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Add `AchievementDefinition` interface to `packages/shared/src/index.ts` with fields: `id`, `name`, `description`, `icon`, `tier`
-- [ ] Add `AchievementItem` interface extending `AchievementDefinition` with `unlockedAt: string | null`
-- [ ] Add `achievementResponseSchema` Zod schema for `GET /achievements` response validation
-- [ ] Add `AchievementUnlockNotification` interface for the `achievementsUnlocked` array in mutating endpoint responses (includes all `AchievementDefinition` fields plus `unlockedAt`)
-- [ ] Export all new types and schemas from `packages/shared/src/index.ts`
-- [ ] Backend service layer uses these types (import from `@pocketflow/shared`)
+- [x] Add `AchievementDefinition` interface to `packages/shared/src/index.ts` with fields: `id`, `name`, `description`, `icon`, `tier`
+- [x] Add `AchievementItem` interface extending `AchievementDefinition` with `unlockedAt: string | null`
+- [x] Add `achievementResponseSchema` Zod schema for `GET /achievements` response validation
+- [x] Add `AchievementUnlockNotification` interface for the `achievementsUnlocked` array in mutating endpoint responses (includes all `AchievementDefinition` fields plus `unlockedAt`)
+- [x] Export all new types and schemas from `packages/shared/src/index.ts`
+- [x] Backend service layer uses these types (import from `@pocketflow/shared`)

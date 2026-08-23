@@ -1,0 +1,161 @@
+---
+import AuthGate from '../components/AuthGate.astro';
+import MobileNav from '../components/MobileNav.astro';
+import Sidebar from '../components/Sidebar.astro';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PocketFlow achievements" />
+    <title>Achievements | PocketFlow</title>
+  </head>
+  <body data-api-url={import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787'}>
+    <AuthGate />
+    <div class="hidden flex min-h-screen" id="app-shell">
+      <Sidebar />
+      <main class="mx-auto w-full max-w-[1280px] px-[52px] pb-[72px] pt-[42px] max-lg:px-[34px] max-[680px]:px-[18px] max-[680px]:pb-[92px] max-[680px]:pt-6">
+        <header class="flex items-start justify-between gap-5">
+          <div class="flex items-start gap-3">
+            <button class="mobile-sidebar-open" data-sidebar-open type="button" aria-label="Open navigation">☰</button>
+            <div>
+              <p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Achievements</strong></p>
+              <h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">My Achievements</h1>
+            </div>
+          </div>
+        </header>
+        <p id="achievements-summary" class="mt-4 hidden text-xs font-semibold text-[#687586]"></p>
+        <div id="achievements-content" class="mt-6 grid gap-10"></div>
+        <p id="achievements-error" class="mt-6 hidden rounded border border-[#F5C1B1] bg-coral-50 px-3 py-2 text-xs text-coral-600"></p>
+      </main>
+    </div>
+    <MobileNav />
+  </body>
+</html>
+
+<script>
+  import { getAchievements } from '../lib/api-client';
+  import type { AchievementItem, AchievementTier } from '@pocketflow/shared';
+
+  const TIER_GROUPS: Array<{ tiers: AchievementTier[]; label: string }> = [
+    { tiers: ['bronze'], label: 'Tier 1 — First Steps' },
+    { tiers: ['silver'], label: 'Tier 2 — Consistency & Habits' },
+    { tiers: ['gold', 'platinum'], label: 'Tier 3 — Mastery' },
+  ];
+
+  const TIER_ACCENT: Record<AchievementTier, { bg: string; text: string; ring: string }> = {
+    bronze: { bg: 'bg-[#F6E7DA]', text: 'text-[#9A6437]', ring: 'ring-[#E8CDB4]' },
+    silver: { bg: 'bg-[#EDF0F2]', text: 'text-[#64748B]', ring: 'ring-[#D7DEE4]' },
+    gold: { bg: 'bg-[#FBF0D7]', text: 'text-[#A07C1F]', ring: 'ring-[#EBD79E]' },
+    platinum: { bg: 'bg-[#EAF4F6]', text: 'text-[#3E7C8C]', ring: 'ring-[#C4E1E8]' },
+  };
+
+  const ICON_GLYPHS: Record<string, string> = {
+    FolderPlus: '📁',
+    Receipt: '🧾',
+    CheckCircle2: '✅',
+    Flame: '🔥',
+    ListOrdered: '📋',
+    RotateCw: '🔄',
+    Trophy: '🏆',
+  };
+
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
+
+  const renderAchievementCard = (achievement: AchievementItem): string => {
+    const accent = TIER_ACCENT[achievement.tier];
+    const glyph = ICON_GLYPHS[achievement.icon] ?? '✦';
+    if (achievement.unlocked) {
+      return `<article class="flex items-center gap-4 rounded-lg border border-[#E8EBE6] bg-white p-[16px]" data-achievement-id="${achievement.id}">
+        <span class="grid h-11 w-11 flex-none place-items-center rounded-md ${accent.bg} ${accent.text} text-xl ring-1 ${accent.ring}" aria-hidden="true">${glyph}</span>
+        <div class="min-w-0">
+          <h3 class="font-display text-[13px] font-bold text-[#334154]">${achievement.name}</h3>
+          <p class="mt-1 text-[11px] leading-5 text-[#687586]">${achievement.description}</p>
+          <p class="mt-1 text-[10px] font-semibold text-[#42A27E]">Unlocked on ${formatDate(achievement.unlockedAt ?? '')}</p>
+        </div>
+      </article>`;
+    }
+    return `<article class="flex items-center gap-4 rounded-lg border border-dashed border-[#E8EBE6] bg-white p-[16px] opacity-70 grayscale" data-achievement-id="${achievement.id}">
+      <span class="grid h-11 w-11 flex-none place-items-center rounded-md bg-[#F1F3EF] text-xl text-[#9AA4AE]" aria-hidden="true">${glyph}</span>
+      <div class="min-w-0">
+        <h3 class="font-display text-[13px] font-medium text-[#9AA4AE]">${achievement.name}</h3>
+        <p class="mt-1 text-[11px] leading-5 text-[#A8B0B8]">${achievement.description}</p>
+        <p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#B7BFC7]">Locked</p>
+      </div>
+    </article>`;
+  };
+
+  const renderAchievements = (achievements: AchievementItem[]) => {
+    const content = document.querySelector('#achievements-content');
+    if (!content) return;
+    content.replaceChildren();
+
+    for (const group of TIER_GROUPS) {
+      const items = achievements.filter((a) => group.tiers.includes(a.tier));
+      if (items.length === 0) continue;
+      const section = document.createElement('section');
+      section.innerHTML = `<h2 class="mb-3 text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]">${group.label.toUpperCase()}</h2><div class="grid gap-3 md:grid-cols-2">${items.map(renderAchievementCard).join('')}</div>`;
+      content.append(section);
+    }
+
+    const unlockedCount = achievements.filter((a) => a.unlocked).length;
+    const summary = document.querySelector('#achievements-summary');
+    if (summary) {
+      summary.textContent = `${unlockedCount} of ${achievements.length} unlocked`;
+      summary.classList.remove('hidden');
+    }
+  };
+
+  const showError = (message: string) => {
+    const element = document.querySelector('#achievements-error');
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('hidden');
+  };
+
+  const waitForToken = async (): Promise<string | null> => {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const token = localStorage.getItem('authToken');
+      if (token) return token;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return null;
+  };
+
+  const loadAchievements = async () => {
+    const token = await waitForToken();
+    if (!token) return;
+    try {
+      const response = await getAchievements(token);
+      renderAchievements(response.data);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Could not load achievements.');
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAchievements();
+
+    // Sidebar handling
+    const setSidebarOpen = (isOpen: boolean) => {
+      const sidebar = document.querySelector('[data-mobile-sidebar]');
+      const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
+      sidebar?.classList.toggle('is-open', isOpen);
+      sidebarBackdrop?.classList.toggle('is-open', isOpen);
+      sidebarBackdrop?.setAttribute('aria-hidden', String(!isOpen));
+      document.body.classList.toggle('sidebar-open', isOpen);
+    };
+
+    document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebarOpen(true));
+    document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebarOpen(false));
+    document.querySelector('[data-sidebar-backdrop]')?.addEventListener('click', () => setSidebarOpen(false));
+    document.querySelectorAll('[data-mobile-sidebar] .nav-item').forEach((item) => item.addEventListener('click', () => setSidebarOpen(false)));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    });
+  });
+</script>
