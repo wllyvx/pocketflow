@@ -108,13 +108,6 @@ You must maximize token efficiency. NEVER read raw code files or use full-text g
 - **Impact & Dead Code:** Run Cypher queries (`query_graph`) or specialized impact analysis tools to check for breaking changes or unused code before refactoring.
 - **File Reading Limits:** Only read raw text files after narrowing down exact line numbers via the MCP server. Only read minimal code chunks; never read whole files larger than 100 lines unless strictly required for a rewrite.
 
-## SHADCN/UI SKILL EXECUTION PROTOCOL
-You MUST strictly load and follow the shadcn/ui skill rules located in `.agent/skills/shadcn/SKILL.md` (or the corresponding documentation file within that directory) before creating, modifying, or styling any UI component. Do not write custom components from scratch if a shadcn equivalent exists.
-
-- **Read Local Skill:** Open and analyze the rules inside `.agent/skills/shadcn/` to understand the specific framework setup, icon mapping, and project architecture.
-- **Use CLI Only:** Always use `npx shadcn@latest add <component-name>` to install new components. Never manually copy-paste component code from the web.
-- **Check Context:** Read `package.json` and the existing Tailwind configuration to ensure full compatibility with the local shadcn skill setup.
-
 ## Agent skills
 
 ### Issue tracker
