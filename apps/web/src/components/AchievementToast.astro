@@ -2,16 +2,7 @@
 
 <script>
   import type { AchievementUnlockNotification } from '@pocketflow/shared';
-
-  const ICON_GLYPHS: Record<string, string> = {
-    FolderPlus: '📁',
-    Receipt: '🧾',
-    CheckCircle2: '✅',
-    Flame: '🔥',
-    ListOrdered: '📋',
-    RotateCw: '🔄',
-    Trophy: '🏆',
-  };
+  import { getAchievementIcon } from '../lib/achievement-icons';
 
   const TOAST_VISIBLE_MS = 4500;
   const TOAST_STAGGER_MS = 600;
@@ -20,15 +11,15 @@
     const container = document.querySelector('#achievement-toast-container');
     if (!container) return;
 
-    const glyph = ICON_GLYPHS[achievement.icon] ?? '✦';
+    const iconSvg = getAchievementIcon(achievement.icon) || '<span aria-hidden="true">✦</span>';
     const toast = document.createElement('div');
     toast.setAttribute('role', 'status');
     toast.className = 'achievement-toast pointer-events-auto flex items-center gap-3 rounded-lg border border-[#BFE3D2] bg-white px-4 py-3 shadow-[0_12px_32px_rgba(23,37,51,.16)]';
 
     const icon = document.createElement('span');
-    icon.className = 'grid h-10 w-10 flex-none place-items-center rounded-md bg-[#E0F4ED] text-lg';
+    icon.className = 'achievement-toast-icon grid h-10 w-10 flex-none place-items-center rounded-md bg-[#E0F4ED] text-[#42A27E]';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = glyph;
+    icon.innerHTML = iconSvg;
 
     const body = document.createElement('div');
     body.className = 'min-w-0';
@@ -75,6 +66,11 @@
 </script>
 
 <style is:global>
+  .achievement-toast-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .achievement-toast {
     opacity: 0;
     transform: translateY(16px);

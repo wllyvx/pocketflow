@@ -38,6 +38,7 @@ import '../styles/global.css';
 
 <script>
   import { getAchievements } from '../lib/api-client';
+  import { getAchievementIcon } from '../lib/achievement-icons';
   import type { AchievementItem, AchievementTier } from '@pocketflow/shared';
 
   const TIER_GROUPS: Array<{ tiers: AchievementTier[]; label: string }> = [
@@ -53,25 +54,15 @@ import '../styles/global.css';
     platinum: { bg: 'bg-[#EAF4F6]', text: 'text-[#3E7C8C]', ring: 'ring-[#C4E1E8]' },
   };
 
-  const ICON_GLYPHS: Record<string, string> = {
-    FolderPlus: '📁',
-    Receipt: '🧾',
-    CheckCircle2: '✅',
-    Flame: '🔥',
-    ListOrdered: '📋',
-    RotateCw: '🔄',
-    Trophy: '🏆',
-  };
-
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
 
   const renderAchievementCard = (achievement: AchievementItem): string => {
     const accent = TIER_ACCENT[achievement.tier];
-    const glyph = ICON_GLYPHS[achievement.icon] ?? '✦';
+    const icon = getAchievementIcon(achievement.icon) || '<span aria-hidden="true">✦</span>';
     if (achievement.unlocked && achievement.unlockedAt) {
       return `<article class="flex items-center gap-4 rounded-lg border border-[#E8EBE6] bg-white p-[16px]" data-achievement-id="${achievement.id}">
-        <span class="grid h-11 w-11 flex-none place-items-center rounded-md ${accent.bg} ${accent.text} text-xl ring-1 ${accent.ring}" aria-hidden="true">${glyph}</span>
+        <span class="achievement-icon grid h-11 w-11 flex-none place-items-center rounded-md ${accent.bg} ${accent.text} ring-1 ${accent.ring}">${icon}</span>
         <div class="min-w-0">
           <h3 class="font-display text-[13px] font-bold text-[#334154]">${achievement.name}</h3>
           <p class="mt-1 text-[11px] leading-5 text-[#687586]">${achievement.description}</p>
@@ -80,7 +71,7 @@ import '../styles/global.css';
       </article>`;
     }
     return `<article class="flex items-center gap-4 rounded-lg border border-dashed border-[#E8EBE6] bg-white p-[16px] opacity-70 grayscale" data-achievement-id="${achievement.id}">
-      <span class="grid h-11 w-11 flex-none place-items-center rounded-md bg-[#F1F3EF] text-xl text-[#9AA4AE]" aria-hidden="true">${glyph}</span>
+      <span class="achievement-icon grid h-11 w-11 flex-none place-items-center rounded-md bg-[#F1F3EF] text-[#9AA4AE]" aria-hidden="true">${icon}</span>
       <div class="min-w-0">
         <h3 class="font-display text-[13px] font-medium text-[#9AA4AE]">${achievement.name}</h3>
         <p class="mt-1 text-[11px] leading-5 text-[#A8B0B8]">${achievement.description}</p>
@@ -159,3 +150,10 @@ import '../styles/global.css';
     });
   });
 </script>
+
+<style is:global>
+  .achievement-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+</style>
