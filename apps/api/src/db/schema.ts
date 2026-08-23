@@ -11,6 +11,8 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   onboardingStatus: text("onboarding_status").notNull().default("pending"),
+  currentStreak: integer("current_streak").notNull().default(0),
+  lastActivityDate: integer("last_activity_date", { mode: "timestamp_ms" }),
   ...timestamps,
 });
 
@@ -65,3 +67,11 @@ export const transactions = sqliteTable("transactions", {
   receiptUrl: text("receipt_url"),
   ...timestamps,
 });
+
+export const userAchievements = sqliteTable("user_achievements", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  achievementId: text("achievement_id").notNull(),
+  unlockedAt: integer("unlocked_at", { mode: "timestamp_ms" }).notNull(),
+  ...timestamps,
+}, (table) => [uniqueIndex("user_achievements_user_achievement_id").on(table.userId, table.achievementId)]);
