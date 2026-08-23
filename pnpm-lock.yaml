@@ -63,6 +63,9 @@ importers:
       astro:
         specifier: ^5.12.0
         version: 5.18.2(@types/node@26.2.0)(jiti@1.21.7)(rollup@4.62.4)(tsx@4.23.12)(typescript@5.9.3)(yaml@2.9.0)
+      lucide-static:
+        specifier: ^1.33.0
+        version: 1.33.0
     devDependencies:
       '@astrojs/check':
         specifier: ^0.9.10
@@ -79,6 +82,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@26.2.0)(vite@6.4.3(@types/node@26.2.0)(jiti@1.21.7)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/shared:
     dependencies:
@@ -2294,6 +2300,9 @@ packages:
   lru-cache@11.5.2:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
     engines: {node: 20 || >=22}
+
+  lucide-static@1.33.0:
+    resolution: {integrity: sha512-jNGgvTNcLUfVRX4N9PH9pVVTJzoph/BmYmgU838bYBQodkUJL4nAThkuymFz1x3OUYMhJxPndC7rdg1sxOPYKg==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -5212,6 +5221,8 @@ snapshots:
   longest-streak@3.1.0: {}
 
   lru-cache@11.5.2: {}
+
+  lucide-static@1.33.0: {}
 
   magic-string@0.30.21:
     dependencies:

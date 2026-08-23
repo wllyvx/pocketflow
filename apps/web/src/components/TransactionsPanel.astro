@@ -150,8 +150,8 @@ window.addEventListener('DOMContentLoaded', () => {
   filtersEl = document.getElementById('transactions-filters');
   paginationEl = document.getElementById('transactions-pagination');
   setupFilters();
-  if (localStorage.getItem('authToken')) refreshPanel();
-  // Listen for external refresh events (e.g., after adding a transaction elsewhere)
+  // Initial data loads wait for pocketflow:dashboard-ready so we never send a
+  // stale localStorage token before AuthGate has renewed the session.
   document.addEventListener('pocketflow:refresh-data', refreshPanel);
   document.addEventListener('pocketflow:dashboard-ready', refreshPanel);
 });
