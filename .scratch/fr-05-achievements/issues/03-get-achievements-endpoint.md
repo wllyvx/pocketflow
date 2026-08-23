@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 (needs service layer)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Create `apps/api/src/routes/achievements.ts` with `GET /achievements` handler
-- [ ] Route calls `getUserAchievements(database, userId)` from service layer
-- [ ] Returns flat array merging achievement definitions with user's `unlockedAt` (or null if locked)
-- [ ] Response follows API.md format: `{ success: true, data: [...] }`
-- [ ] Register route in `apps/api/src/index.ts`
-- [ ] Manual test with dev token returns expected structure
+- [x] Create `apps/api/src/routes/achievements.ts` with `GET /achievements` handler
+- [x] Route calls `getUserAchievements(database, userId)` from service layer
+- [x] Returns flat array merging achievement definitions with user's `unlockedAt` (or null if locked)
+- [x] Response follows API.md format: `{ success: true, data: [...] }`
+- [x] Register route in `apps/api/src/index.ts`
+- [x] Manual test with dev token returns expected structure

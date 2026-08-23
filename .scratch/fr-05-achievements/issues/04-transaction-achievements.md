@@ -4,12 +4,12 @@
 
 **Blocked by:** 02 (needs service layer)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] In `POST /transactions` route handler (after successful transaction create), update user's `currentStreak` and `lastActivityDate` using streak calculation logic
-- [ ] Call `checkAchievementsForEvent(database, userId, 'transaction_created')` after streak update
-- [ ] Include `achievementsUnlocked: []` array in success response (empty array if none unlocked)
-- [ ] Manual test: first transaction unlocks `first-transaction`
-- [ ] Manual test: logging transactions on consecutive days increments streak, unlocks `7-day-streak` at 7, `30-day-streak` at 30
-- [ ] Manual test: gap > 1 day resets streak to 1
-- [ ] Manual test: 10th transaction unlocks `10-transactions`
+- [x] In `POST /transactions` route handler (after successful transaction create), update user's `currentStreak` and `lastActivityDate` using streak calculation logic
+- [x] Call `checkAchievementsForEvent(database, userId, 'transaction_created')` after streak update
+- [x] Include `achievementsUnlocked: []` array in success response (empty array if none unlocked)
+- [x] Manual test: first transaction unlocks `first-transaction`
+- [x] Manual test: logging transactions on consecutive days increments streak, unlocks `7-day-streak` at 7, `30-day-streak` at 30
+- [x] Manual test: gap > 1 day resets streak to 1
+- [x] Manual test: 10th transaction unlocks `10-transactions`

@@ -21,6 +21,7 @@ import {
   updateEnvelope,
 } from "../services/envelope.service";
 import { ServiceError } from "../services/transaction.service";
+import { checkAchievementsForEvent, getUserAchievements } from "../services/achievements/achievement.service";
 
 type Bindings = {
   DB?: D1Database;
@@ -91,7 +92,23 @@ envelopesRouter.post("/", async (context) => {
   const parsed = createEnvelopeSchema.safeParse(await context.req.json().catch(() => null));
   if (!parsed.success) return context.json({ success: false, error: { code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Invalid envelope input." } }, 400);
   try {
-    return context.json({ success: true, data: await createEnvelope(resolved.database, resolved.user.id, parsed.data) }, 201);
+    const envelope = await createEnvelope(resolved.database, resolved.user.id, parsed.data);
+    
+    const achievementsBefore = await getUserAchievements(resolved.database, resolved.user.id);
+    const unlockedBeforeIds = new Set(achievementsBefore.filter((a: any) => a.unlocked).map((a: any) => a.id));
+
+    await checkAchievementsForEvent(resolved.database, resolved.user.id, "envelope_created");
+
+    const achievementsAfter = await getUserAchievements(resolved.database, resolved.user.id);
+    const newlyUnlocked = achievementsAfter.filter((a: any) => a.unlocked && !unlockedBeforeIds.has(a.id));
+
+    return context.json({
+      success: true,
+      data: {
+        ...envelope,
+        achievementsUnlocked: newlyUnlocked,
+      },
+    }, 201);
   } catch (error) {
     return serviceErrorResponse(context, error);
   }
@@ -129,7 +146,23 @@ envelopesRouter.post("/:id/fill", async (context) => {
   const parsed = fillEnvelopeSchema.safeParse(await context.req.json().catch(() => null));
   if (!parsed.success) return context.json({ success: false, error: { code: "INVALID_INPUT", message: parsed.error.issues[0]?.message ?? "Invalid fill input." } }, 400);
   try {
-    return context.json({ success: true, data: await fillEnvelope(resolved.database, resolved.user.id, context.req.param("id"), parsed.data) });
+    const envelope = await fillEnvelope(resolved.database, resolved.user.id, context.req.param("id"), parsed.data);
+
+    const achievementsBefore = await getUserAchievements(resolved.database, resolved.user.id);
+    const unlockedBeforeIds = new Set(achievementsBefore.filter((a: any) => a.unlocked).map((a: any) => a.id));
+
+    await checkAchievementsForEvent(resolved.database, resolved.user.id, "envelope_funded");
+
+    const achievementsAfter = await getUserAchievements(resolved.database, resolved.user.id);
+    const newlyUnlocked = achievementsAfter.filter((a: any) => a.unlocked && !unlockedBeforeIds.has(a.id));
+
+    return context.json({
+      success: true,
+      data: {
+        ...envelope,
+        achievementsUnlocked: newlyUnlocked,
+      },
+    });
   } catch (error) {
     return serviceErrorResponse(context, error);
   }

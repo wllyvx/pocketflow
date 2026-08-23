@@ -16,6 +16,7 @@ import {
   ServiceError,
   updateTransaction,
 } from "../services/transaction.service";
+import { checkAchievementsForEvent, getUserAchievements } from "../services/achievements/achievement.service";
 
 type Bindings = {
   DB?: D1Database;
@@ -141,10 +142,23 @@ transactionsRouter.post("/", async (context) => {
 
   try {
     const transaction = await createTransaction(database, user.id, parsed.data);
+    
+    // Fetch achievements before check to determine newly unlocked ones
+    const achievementsBefore = await getUserAchievements(database, user.id);
+    const unlockedBeforeIds = new Set(achievementsBefore.filter((a: any) => a.unlocked).map((a: any) => a.id));
+
+    await checkAchievementsForEvent(database, user.id, "transaction_created");
+
+    const achievementsAfter = await getUserAchievements(database, user.id);
+    const newlyUnlocked = achievementsAfter.filter((a: any) => a.unlocked && !unlockedBeforeIds.has(a.id));
+
     return context.json(
       {
         success: true,
-        data: transaction,
+        data: {
+          ...transaction,
+          achievementsUnlocked: newlyUnlocked,
+        },
       },
       201
     );

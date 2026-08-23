@@ -8,6 +8,7 @@ import { requireAuth, type AuthVariables } from "./middleware/auth";
 import transactionsRouter from "./routes/transactions";
 import receiptsRouter from "./routes/receipts";
 import envelopesRouter from "./routes/envelopes";
+import achievementsRouter from "./routes/achievements";
 import { calculateAvailableToSpend, listEnvelopes } from "./services/envelope.service";
 
 export type Bindings = {
@@ -51,6 +52,7 @@ app.get("/api/hello", (context) => context.json({
 // Mount transactions router
 app.route("/api/transactions", transactionsRouter);
 app.route("/api/envelopes", envelopesRouter);
+app.route("/api/achievements", achievementsRouter);
 
 app.get("/api/users/me", async (context) => {
   const now = new Date();

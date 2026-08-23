@@ -20,6 +20,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250813.0",
     "@playwright/test": "^1.62.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.4",
     "typescript": "^5.8.3",
     "vitest": "^4.1.11",
