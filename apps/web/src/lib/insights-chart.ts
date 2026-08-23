@@ -89,3 +89,46 @@ export function buildCategoryChart(
 
   return { bars, isEmpty: false };
 }
+
+export interface RhythmPoint {
+  x: number;
+  y: number;
+}
+
+export interface SpendingRhythmChart {
+  points: RhythmPoint[];
+  last: RhythmPoint;
+  linePath: string;
+  areaPath: string;
+  isEmpty: boolean;
+}
+
+const formatCoord = (value: number): string =>
+  Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, "");
+
+export function buildSpendingRhythmChart(
+  expenseTotals: number[],
+  options?: { width?: number; height?: number }
+): SpendingRhythmChart {
+  const width = options?.width ?? 390;
+  const height = options?.height ?? 150;
+
+  if (expenseTotals.length === 0 || !expenseTotals.some((total) => total > 0)) {
+    return { points: [], last: { x: 0, y: height }, linePath: "", areaPath: "", isEmpty: true };
+  }
+
+  const maxTotal = Math.max(...expenseTotals);
+  const step = expenseTotals.length > 1 ? width / (expenseTotals.length - 1) : width;
+
+  const points = expenseTotals.map((total, index) => ({
+    x: index * step,
+    y: maxTotal === 0 ? height : height - (total / maxTotal) * height,
+  }));
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${formatCoord(point.x)} ${formatCoord(point.y)}`)
+    .join(" ");
+  const areaPath = `${linePath} V${height} H0 Z`;
+
+  return { points, last: points[points.length - 1], linePath, areaPath, isEmpty: false };
+}

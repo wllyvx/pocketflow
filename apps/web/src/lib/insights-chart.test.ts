@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { InsightsCategoryTotal } from "@pocketflow/shared";
 import {
   buildCategoryChart,
+  buildSpendingRhythmChart,
   formatRupiah,
   resolvePresetRange,
   type RangePreset,
@@ -64,6 +65,58 @@ describe("buildCategoryChart", () => {
 
     expect(result.isEmpty).toBe(true);
     expect(result.bars).toHaveLength(0);
+  });
+});
+
+describe("buildSpendingRhythmChart", () => {
+  const RHYTHM_WIDTH = 390;
+  const RHYTHM_HEIGHT = 150;
+
+  it("signals empty when there are no buckets or no expenses at all", () => {
+    expect(buildSpendingRhythmChart([], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT }).isEmpty).toBe(true);
+    expect(
+      buildSpendingRhythmChart([0, 0, 0], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT }).isEmpty
+    ).toBe(true);
+  });
+
+  it("returns no geometry when empty", () => {
+    const result = buildSpendingRhythmChart([0, 0], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
+
+    expect(result.points).toHaveLength(0);
+    expect(result.linePath).toBe("");
+    expect(result.areaPath).toBe("");
+  });
+
+  it("produces one point per bucket spanning the full width", () => {
+    const result = buildSpendingRhythmChart([10, 20, 30], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
+
+    expect(result.isEmpty).toBe(false);
+    expect(result.points).toHaveLength(3);
+    expect(result.points[0].x).toBeGreaterThanOrEqual(0);
+    expect(result.points[result.points.length - 1].x).toBe(RHYTHM_WIDTH);
+  });
+
+  it("scales y so the largest expense sits at the top and zero at the bottom", () => {
+    const result = buildSpendingRhythmChart([100, 50, 0], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
+
+    const ys = result.points.map((p) => p.y);
+    expect(Math.min(...ys)).toBeCloseTo(0, 5);
+    expect(ys[2]).toBeCloseTo(RHYTHM_HEIGHT, 5);
+    expect(ys[1]).toBeCloseTo(RHYTHM_HEIGHT / 2, 5);
+  });
+
+  it("builds a polyline path and a closed area path ending at the baseline", () => {
+    const result = buildSpendingRhythmChart([10, 20], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
+
+    expect(result.linePath).toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+    expect(result.areaPath).toContain(result.linePath);
+    expect(result.areaPath).toMatch(/V\d+(\.\d+)? H0 Z$/);
+  });
+
+  it("marks the last point for the end-of-line dot", () => {
+    const result = buildSpendingRhythmChart([10, 20, 30], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
+
+    expect(result.last).toEqual(result.points[result.points.length - 1]);
   });
 });
 

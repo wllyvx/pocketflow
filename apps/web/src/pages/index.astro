@@ -45,8 +45,9 @@ import '../styles/global.css';
 </html>
 
 <script>
-import { calculateEnvelopeHealth } from '@pocketflow/shared';
+import { calculateEnvelopeHealth, type InsightsSummary } from '@pocketflow/shared';
 import type { EnvelopeItem, TransactionItem } from '@pocketflow/shared';
+import { buildSpendingRhythmChart } from '../lib/insights-chart';
 
 // Helper functions
 const formatMoney = (amount: number) => `Rp ${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount)}`;
@@ -95,8 +96,47 @@ document.addEventListener('pocketflow:dashboard-ready', (event) => {
   }
   setText('#monthly-income', formatMoney(dashboard.monthlyIncome));
   setText('#total-spent', formatMoney(dashboard.spent));
-  setText('#rhythm-spending', formatMoney(dashboard.spent));
   setText('#health-score', `${dashboard.healthScore}/100`);
+  void loadSpendingRhythm();
+
+  const renderRhythm = (summary: InsightsSummary) => {
+    const expenseTotals = summary.trend.map((bucket) => bucket.expenseTotal);
+    const chart = buildSpendingRhythmChart(expenseTotals);
+
+    const chartWrap = document.querySelector('#rhythm-chart');
+    const emptyState = document.querySelector('#rhythm-empty');
+    chartWrap?.classList.toggle('hidden', chart.isEmpty);
+    emptyState?.classList.toggle('hidden', !chart.isEmpty);
+    emptyState?.classList.toggle('flex', chart.isEmpty);
+
+    if (!chart.isEmpty) {
+      const line = document.querySelector<SVGPathElement>('#rhythm-line');
+      const area = document.querySelector<SVGPathElement>('#rhythm-area');
+      const dot = document.querySelector<SVGCircleElement>('#rhythm-dot');
+      if (line) line.setAttribute('d', chart.linePath);
+      if (area) area.setAttribute('d', chart.areaPath);
+      if (dot) {
+        dot.setAttribute('cx', String(chart.last.x));
+        dot.setAttribute('cy', String(chart.last.y));
+        dot.setAttribute('visibility', 'visible');
+      }
+    } else {
+      const dot = document.querySelector<SVGCircleElement>('#rhythm-dot');
+      dot?.setAttribute('visibility', 'hidden');
+    }
+
+    setText('#rhythm-spending', formatMoney(expenseTotals.reduce((sum, total) => sum + total, 0)));
+  };
+
+  async function loadSpendingRhythm() {
+    const token = localStorage.getItem('authToken') ?? '';
+    const apiUrl = document.body.dataset.apiUrl ?? 'http://localhost:8787';
+    const response = await fetch(`${apiUrl}/api/insights/summary`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return;
+    const body = await response.json() as { success: boolean; data?: InsightsSummary };
+    if (body.success && body.data) renderRhythm(body.data);
+  }
+  loadSpendingRhythm().catch(() => { });
   setText('#health-label', dashboard.healthScore >= 70 ? 'Looking good' : dashboard.healthScore > 0 ? 'Needs attention' : 'No data yet');
   const healthBar = document.querySelector('#health-bar') as HTMLElement | null;
   if (healthBar) healthBar.style.width = `${dashboard.healthScore}%`;
