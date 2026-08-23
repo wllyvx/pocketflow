@@ -89,6 +89,7 @@ import {
   type UpdateEnvelopeInput,
   type AchievementItem,
   type AchievementUnlockNotification,
+  type InsightsSummary,
 } from "@pocketflow/shared";
 
 export type EnvelopeDeletePreview = {
@@ -146,6 +147,13 @@ export async function deleteEnvelope(token: string, id: string, input: DeleteEnv
 
 export async function getAchievements(token: string) {
   return request<{ success: true; data: AchievementItem[] }>("/api/achievements", token);
+}
+
+export async function getInsightsSummary(token: string, range?: { from?: string; to?: string }) {
+  const qs = range?.from && range?.to
+    ? `?${new URLSearchParams({ from: range.from, to: range.to }).toString()}`
+    : "";
+  return request<{ success: true; data: InsightsSummary }>(`/api/insights/summary${qs}`, token);
 }
 
 function notifyAchievementsUnlocked(data: unknown) {

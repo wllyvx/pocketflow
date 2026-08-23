@@ -1,0 +1,209 @@
+---
+import AuthGate from '../components/AuthGate.astro';
+import MobileNav from '../components/MobileNav.astro';
+import Sidebar from '../components/Sidebar.astro';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PocketFlow insights and reports" />
+    <title>Insights | PocketFlow</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body data-api-url={import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787'}>
+    <AuthGate />
+    <div class="hidden flex min-h-screen" id="app-shell">
+      <Sidebar />
+      <main class="mx-auto w-full max-w-[1280px] px-[52px] pb-[72px] pt-[42px] max-lg:px-[34px] max-[680px]:px-[18px] max-[680px]:pb-[92px] max-[680px]:pt-6">
+        <header class="flex items-start justify-between gap-5">
+          <div class="flex items-start gap-3">
+            <button class="mobile-sidebar-open" data-sidebar-open type="button" aria-label="Open navigation">☰</button>
+            <div>
+              <p class="mb-3 text-[10px] text-[#8B96A4]">Workspace / <strong class="text-[#465468]">Insights</strong></p>
+              <h1 class="font-display text-[29px] font-semibold leading-[1.15] tracking-[-1px] text-[#1A2738]">Insights &amp; Reports</h1>
+            </div>
+          </div>
+        </header>
+
+        <section aria-label="Date range" class="mt-6 flex flex-wrap items-end gap-3">
+          <div class="flex flex-wrap gap-2" role="group" aria-label="Range presets">
+            <button type="button" data-preset="7d" class="rounded-md border border-[#E8EBE6] bg-white px-3 py-1.5 text-xs font-semibold text-[#687586] transition-fast hover:border-coral-300 hover:text-coral-600">Last 7 days</button>
+            <button type="button" data-preset="month" class="rounded-md border border-[#E8EBE6] bg-white px-3 py-1.5 text-xs font-semibold text-[#687586] transition-fast hover:border-coral-300 hover:text-coral-600">This month</button>
+            <button type="button" data-preset="3m" class="rounded-md border border-[#E8EBE6] bg-white px-3 py-1.5 text-xs font-semibold text-[#687586] transition-fast hover:border-coral-300 hover:text-coral-600">Last 3 months</button>
+          </div>
+          <div class="flex items-end gap-2">
+            <label class="text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]" for="insights-from">FROM
+              <input id="insights-from" data-custom-from type="date" class="mt-1 block rounded-md border border-[#E8EBE6] bg-white px-2 py-1.5 text-xs font-semibold text-[#334154]" />
+            </label>
+            <label class="text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]" for="insights-to">TO
+              <input id="insights-to" data-custom-to type="date" class="mt-1 block rounded-md border border-[#E8EBE6] bg-white px-2 py-1.5 text-xs font-semibold text-[#334154]" />
+            </label>
+            <button type="button" data-custom-apply class="rounded-md bg-coral-500 px-3 py-1.5 text-xs font-semibold text-white transition-fast hover:bg-coral-600">Apply</button>
+          </div>
+        </section>
+        <p id="insights-range-label" class="mt-3 text-xs font-semibold text-[#687586]"></p>
+
+        <section aria-label="Spending by category" class="mt-4 rounded-lg border border-[#E8EBE6] bg-white p-[16px]">
+          <h2 class="mb-4 text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]">SPENDING BY CATEGORY</h2>
+          <div id="insights-chart"></div>
+          <div id="insights-empty" class="hidden py-10 text-center">
+            <p class="font-display text-sm font-semibold text-[#334154]">No spending in this range yet</p>
+            <p class="mx-auto mt-2 max-w-[380px] text-xs leading-5 text-[#687586]">Add an expense transaction and it will show up here broken down by category.</p>
+            <a href="/#transactions" class="mt-4 inline-block rounded-md bg-coral-500 px-4 py-2 text-xs font-semibold text-white no-underline transition-fast hover:bg-coral-600">Add a transaction</a>
+          </div>
+        </section>
+
+        <p id="insights-error" class="mt-6 hidden rounded border border-[#F5C1B1] bg-coral-50 px-3 py-2 text-xs text-coral-600"></p>
+      </main>
+    </div>
+    <MobileNav />
+  </body>
+</html>
+
+<script>
+  import { getInsightsSummary } from '../lib/api-client';
+  import {
+    BAR_GAP,
+    BAR_HEIGHT,
+    MAX_BAR_WIDTH,
+    buildCategoryChart,
+    resolvePresetRange,
+    type RangePreset,
+  } from '../lib/insights-chart';
+
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
+
+  const formatDateLabel = (value: string) =>
+    new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
+
+  const renderChart = (categories: Parameters<typeof buildCategoryChart>[0]) => {
+    const chartContainer = document.querySelector('#insights-chart');
+    const emptyState = document.querySelector('#insights-empty');
+    if (!chartContainer || !emptyState) return;
+
+    const { bars, isEmpty } = buildCategoryChart(categories);
+    emptyState.classList.toggle('hidden', !isEmpty);
+    chartContainer.classList.toggle('hidden', isEmpty);
+
+    if (isEmpty) {
+      chartContainer.replaceChildren();
+      return;
+    }
+
+    const rowHeight = BAR_HEIGHT + BAR_GAP;
+    const width = 320;
+    const height = bars.length * rowHeight;
+    const labelY = (bar: (typeof bars)[number]) => bar.y + 12;
+    const barY = (bar: (typeof bars)[number]) => bar.y + 18;
+    const scaleX = (bar: (typeof bars)[number]) => (bar.width / MAX_BAR_WIDTH) * width;
+
+    const svg = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Spending by category" class="w-full">
+      ${bars
+        .map(
+          (bar) => `
+        <text x="0" y="${labelY(bar)}" font-size="10" font-weight="600" fill="#334154">${escapeHtml(bar.name)}</text>
+        <text x="${width}" y="${labelY(bar)}" font-size="10" text-anchor="end" fill="#687586">${escapeHtml(bar.amountLabel)}</text>
+        <rect x="0" y="${barY(bar)}" width="${scaleX(bar)}" height="${bar.height - 8}" rx="4" fill="#D05D43"></rect>
+        ${bar.percentage ? `<text x="${Math.min(scaleX(bar) + 6, width - 40)}" y="${barY(bar) + bar.height - 14}" font-size="9" fill="#8B96A4">${bar.percentage}%</text>` : ''}`
+        )
+        .join('')}
+    </svg>`;
+    chartContainer.innerHTML = svg;
+  };
+
+  const showError = (message: string) => {
+    const element = document.querySelector('#insights-error');
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('hidden');
+  };
+
+  const setRangeLabel = (from: string, to: string) => {
+    const element = document.querySelector('#insights-range-label');
+    if (element) element.textContent = `${formatDateLabel(from)} – ${formatDateLabel(to)} · Total spent shown per category`;
+  };
+
+  const waitForToken = async (): Promise<string | null> => {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const token = localStorage.getItem('authToken');
+      if (token) return token;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return null;
+  };
+
+  const loadInsights = async (range?: { from: string; to: string }) => {
+    const token = await waitForToken();
+    if (!token) return;
+    try {
+      const response = await getInsightsSummary(token, range);
+      renderChart(response.data.categories);
+      if (range) setRangeLabel(range.from, range.to);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Could not load insights.');
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    let currentRange: { from: string; to: string } | undefined;
+
+    const setActivePreset = (preset: string) => {
+      document.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach((button) => {
+        const isActive = button.dataset.preset === preset;
+        button.classList.toggle('border-coral-500', isActive);
+        button.classList.toggle('bg-coral-50', isActive);
+        button.classList.toggle('text-coral-600', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+    };
+
+    const applyPreset = (preset: RangePreset) => {
+      setActivePreset(preset);
+      currentRange = resolvePresetRange(preset, new Date());
+      loadInsights(currentRange);
+    };
+
+    document.querySelectorAll('[data-preset]').forEach((button) => {
+      button.addEventListener('click', () => applyPreset(((button as HTMLElement).dataset.preset as RangePreset)));
+    });
+
+    document.querySelector('[data-custom-apply]')?.addEventListener('click', () => {
+      const fromInput = document.querySelector<HTMLInputElement>('[data-custom-from]');
+      const toInput = document.querySelector<HTMLInputElement>('[data-custom-to]');
+      if (!fromInput?.value || !toInput?.value) return;
+      if (fromInput.value > toInput.value) {
+        showError('"From" must be on or before "To".');
+        return;
+      }
+      setActivePreset('');
+      currentRange = { from: fromInput.value, to: toInput.value };
+      loadInsights(currentRange);
+    });
+
+    // Default range: last 7 days
+    applyPreset('7d');
+
+    // Sidebar handling
+    const setSidebarOpen = (isOpen: boolean) => {
+      const sidebar = document.querySelector('[data-mobile-sidebar]');
+      const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
+      sidebar?.classList.toggle('is-open', isOpen);
+      sidebarBackdrop?.classList.toggle('is-open', isOpen);
+      sidebarBackdrop?.setAttribute('aria-hidden', String(!isOpen));
+      document.body.classList.toggle('sidebar-open', isOpen);
+    };
+
+    document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebarOpen(true));
+    document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebarOpen(false));
+    document.querySelector('[data-sidebar-backdrop]')?.addEventListener('click', () => setSidebarOpen(false));
+    document.querySelectorAll('[data-mobile-sidebar] .nav-item').forEach((item) => item.addEventListener('click', () => setSidebarOpen(false)));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    });
+  });
+</script>
