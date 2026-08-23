@@ -69,7 +69,7 @@ import '../styles/global.css';
   const renderAchievementCard = (achievement: AchievementItem): string => {
     const accent = TIER_ACCENT[achievement.tier];
     const glyph = ICON_GLYPHS[achievement.icon] ?? '✦';
-    if (achievement.unlocked) {
+    if (achievement.unlocked && achievement.unlockedAt) {
       return `<article class="flex items-center gap-4 rounded-lg border border-[#E8EBE6] bg-white p-[16px]" data-achievement-id="${achievement.id}">
         <span class="grid h-11 w-11 flex-none place-items-center rounded-md ${accent.bg} ${accent.text} text-xl ring-1 ${accent.ring}" aria-hidden="true">${glyph}</span>
         <div class="min-w-0">
