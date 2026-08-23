@@ -1,0 +1,74 @@
+<div id="achievement-toast-container" class="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-3" aria-live="polite"></div>
+
+<script>
+  import type { AchievementUnlockNotification } from '@pocketflow/shared';
+
+  const ICON_GLYPHS: Record<string, string> = {
+    FolderPlus: '📁',
+    Receipt: '🧾',
+    CheckCircle2: '✅',
+    Flame: '🔥',
+    ListOrdered: '📋',
+    RotateCw: '🔄',
+    Trophy: '🏆',
+  };
+
+  const TOAST_VISIBLE_MS = 4500;
+  const TOAST_STAGGER_MS = 600;
+
+  let queue: AchievementUnlockNotification[] = [];
+  let showing = false;
+
+  const showToast = (achievement: AchievementUnlockNotification) => {
+    const container = document.querySelector('#achievement-toast-container');
+    if (!container) return;
+
+    const glyph = ICON_GLYPHS[achievement.icon] ?? '✦';
+    const toast = document.createElement('div');
+    toast.setAttribute('role', 'status');
+    toast.className = 'achievement-toast pointer-events-auto flex items-center gap-3 rounded-lg border border-[#BFE3D2] bg-white px-4 py-3 shadow-[0_12px_32px_rgba(23,37,51,.16)]';
+    toast.innerHTML = `<span class="grid h-10 w-10 flex-none place-items-center rounded-md bg-[#E0F4ED] text-lg" aria-hidden="true">${glyph}</span><div class="min-w-0"><p class="text-[9px] font-bold uppercase tracking-[0.11em] text-[#42A27E]">Achievement unlocked!</p><h3 class="font-display text-[13px] font-bold text-[#334154]">${achievement.name}</h3><p class="mt-0.5 truncate text-[11px] text-[#687586]">${achievement.description}</p></div>`;
+    container.append(toast);
+
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+    setTimeout(() => {
+      toast.classList.remove('is-visible');
+      setTimeout(() => toast.remove(), 300);
+    }, TOAST_VISIBLE_MS);
+  };
+
+  const processQueue = () => {
+    if (showing) return;
+    showing = true;
+    while (queue.length > 0) {
+      const achievement = queue.shift() as AchievementUnlockNotification;
+      showToast(achievement);
+      setTimeout(() => {
+        showing = false;
+        processQueue();
+      }, TOAST_STAGGER_MS);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('pocketflow:achievements-unlocked', (event) => {
+      queue.push(...(event as CustomEvent<AchievementUnlockNotification[]>).detail);
+      processQueue();
+    });
+  });
+</script>
+
+<style is:global>
+  .achievement-toast {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.3s ease-in-out,
+      transform 0.3s ease-in-out;
+  }
+
+  .achievement-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>

@@ -88,6 +88,7 @@ import {
   type TransferEnvelopeInput,
   type UpdateEnvelopeInput,
   type AchievementItem,
+  type AchievementUnlockNotification,
 } from "@pocketflow/shared";
 
 export type EnvelopeDeletePreview = {
@@ -112,7 +113,9 @@ export async function getEnvelopeDeletePreview(token: string, id: string) {
 export async function createEnvelope(token: string, input: CreateEnvelopeInput) {
   const parsed = createEnvelopeSchema.safeParse(input);
   if (!parsed.success) throw new Error(`Invalid envelope input: ${parsed.error.message}`);
-  return request<{ success: true; data: EnvelopeItem }>("/api/envelopes", token, { method: "POST", body: JSON.stringify(parsed.data) });
+  const response = await request<{ success: true; data: EnvelopeItem }>("/api/envelopes", token, { method: "POST", body: JSON.stringify(parsed.data) });
+  notifyAchievementsUnlocked(response.data);
+  return response;
 }
 
 export async function updateEnvelope(token: string, id: string, input: UpdateEnvelopeInput) {
@@ -124,7 +127,9 @@ export async function updateEnvelope(token: string, id: string, input: UpdateEnv
 export async function fillEnvelope(token: string, id: string, input: FillEnvelopeInput) {
   const parsed = fillEnvelopeSchema.safeParse(input);
   if (!parsed.success) throw new Error(`Invalid envelope fill input: ${parsed.error.message}`);
-  return request<{ success: true; data: EnvelopeItem }>(`/api/envelopes/${id}/fill`, token, { method: "POST", body: JSON.stringify(parsed.data) });
+  const response = await request<{ success: true; data: EnvelopeItem }>(`/api/envelopes/${id}/fill`, token, { method: "POST", body: JSON.stringify(parsed.data) });
+  notifyAchievementsUnlocked(response.data);
+  return response;
 }
 
 export async function transferEnvelope(token: string, input: TransferEnvelopeInput) {
@@ -142,6 +147,15 @@ export async function deleteEnvelope(token: string, id: string, input: DeleteEnv
 export async function getAchievements(token: string) {
   return request<{ success: true; data: AchievementItem[] }>("/api/achievements", token);
 }
+
+/** Dispatch a UI event when a mutating response carries newly unlocked achievements. */
+export function notifyAchievementsUnlocked(data: unknown) {
+  const unlocked = (data as { achievementsUnlocked?: AchievementUnlockNotification[] } | undefined)?.achievementsUnlocked;
+  if (Array.isArray(unlocked) && unlocked.length > 0) {
+    document.dispatchEvent(new CustomEvent("pocketflow:achievements-unlocked", { detail: unlocked }));
+  }
+}
+
 
 /** Retrieve paginated list of transactions */
 export async function getTransactions(token: string, query?: ListTransactionsQuery) {
@@ -177,10 +191,12 @@ export async function createTransaction(token: string, input: CreateTransactionI
   if (!parsed.success) {
     throw new Error(`Invalid transaction input: ${parsed.error.message}`);
   }
-  return request<{ success: true; data: TransactionItem }>("/api/transactions", token, {
+  const response = await request<{ success: true; data: TransactionItem }>("/api/transactions", token, {
     method: "POST",
     body: JSON.stringify(parsed.data),
   });
+  notifyAchievementsUnlocked(response.data);
+  return response;
 }
 
 /** Update an existing transaction */
