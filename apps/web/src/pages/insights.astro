@@ -57,6 +57,22 @@ import '../styles/global.css';
           </div>
         </section>
 
+        <section aria-label="Income vs expense trend" class="mt-[18px] rounded-lg border border-[#E8EBE6] bg-white p-[16px]">
+          <h2 class="mb-4 flex items-center justify-between text-[10px] font-bold tracking-[0.11em] text-[#8B96A4]">
+            INCOME VS EXPENSE
+            <span class="flex items-center gap-3 text-[9px] font-semibold normal-case tracking-normal">
+              <span class="flex items-center gap-1.5"><i class="inline-block h-1.5 w-1.5 rounded-full bg-[#42A27E]"></i><span class="text-[#687586]">Income</span></span>
+              <span class="flex items-center gap-1.5"><i class="inline-block h-1.5 w-1.5 rounded-full bg-[#ED8066]"></i><span class="text-[#687586]">Expense</span></span>
+            </span>
+          </h2>
+          <div id="trend-chart"></div>
+          <div id="trend-empty" class="hidden py-10 text-center">
+            <p class="font-display text-sm font-semibold text-[#334154]">No activity in this range yet</p>
+            <p class="mx-auto mt-2 max-w-[380px] text-xs leading-5 text-[#687586]">Log income or expenses and your trend over time will appear here.</p>
+            <a href="/#transactions" class="mt-4 inline-block rounded-md bg-coral-500 px-4 py-2 text-xs font-semibold text-white no-underline transition-fast hover:bg-coral-600">Add a transaction</a>
+          </div>
+        </section>
+
         <p id="insights-error" class="mt-6 hidden rounded border border-[#F5C1B1] bg-coral-50 px-3 py-2 text-xs text-coral-600"></p>
       </main>
     </div>
@@ -66,6 +82,7 @@ import '../styles/global.css';
 
 <script>
   import { getInsightsSummary } from '../lib/api-client';
+  import { buildTrendChart } from '../lib/insights-chart';
   import {
     BAR_GAP,
     BAR_HEIGHT,
@@ -74,6 +91,7 @@ import '../styles/global.css';
     resolvePresetRange,
     type RangePreset,
   } from '../lib/insights-chart';
+  import type { InsightsSummary } from '@pocketflow/shared';
 
   const escapeHtml = (value: string) =>
     value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
@@ -116,6 +134,45 @@ import '../styles/global.css';
     chartContainer.innerHTML = svg;
   };
 
+  const renderTrend = (trend: InsightsSummary['trend'], granularity: InsightsSummary['meta']['granularity']) => {
+    const chartContainer = document.querySelector('#trend-chart');
+    const emptyState = document.querySelector('#trend-empty');
+    if (!chartContainer || !emptyState) return;
+
+    const chart = buildTrendChart(trend);
+    emptyState.classList.toggle('hidden', !chart.isEmpty);
+    chartContainer.classList.toggle('hidden', chart.isEmpty);
+
+    if (chart.isEmpty) {
+      chartContainer.replaceChildren();
+      return;
+    }
+
+    const width = 640;
+    const height = 200;
+    const labelY = height + 18;
+    const svgHeight = height + 26;
+
+    const series = (lastPoint: { x: number; y: number }, path: string, areaPath: string, color: string) => `
+      <path d="${areaPath}" fill="${color}" opacity=".08"></path>
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+      <circle cx="${lastPoint.x}" cy="${lastPoint.y}" r="4" fill="white" stroke="${color}" stroke-width="2.5"></circle>`;
+
+    const svg = `<svg viewBox="0 0 ${width} ${svgHeight}" preserveAspectRatio="none" role="img"
+        aria-label="Income versus expense trend, ${granularity} buckets" class="w-full overflow-visible">
+      <line x1="0" y1="${height}" x2="${width}" y2="${height}" stroke="#E9EDE9" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+      ${series(chart.lastIncome, chart.incomePath, chart.incomeAreaPath, '#42A27E')}
+      ${series(chart.lastExpense, chart.expensePath, chart.expenseAreaPath, '#ED8066')}
+      ${chart.axisLabels
+        .map(
+          (label) =>
+            `<text x="${label.x}" y="${labelY}" font-size="9" fill="#8B96A4" text-anchor="${label.x === 0 ? 'start' : label.x >= width ? 'end' : 'middle'}">${escapeHtml(label.text)}</text>`
+        )
+        .join('')}
+    </svg>`;
+    chartContainer.innerHTML = svg;
+  };
+
   const showError = (message: string) => {
     const element = document.querySelector('#insights-error');
     if (!element) return;
@@ -143,6 +200,7 @@ import '../styles/global.css';
     try {
       const response = await getInsightsSummary(token, range);
       renderChart(response.data.categories);
+      renderTrend(response.data.trend, response.data.meta.granularity);
       if (range) setRangeLabel(range.from, range.to);
     } catch (error) {
       showError(error instanceof Error ? error.message : 'Could not load insights.');

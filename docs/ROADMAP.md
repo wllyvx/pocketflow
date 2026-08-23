@@ -34,8 +34,8 @@ Tujuan: aplikasi yang benar-benar bisa dipakai untuk mencatat keuangan manual se
 - [ ] Empty states untuk user baru.
 
 **1d. Insights**
-- [ ] Chart spending by category, income vs expense trend (FR-06).
-- [ ] Filter rentang tanggal.
+- [x] Chart spending by category, income vs expense trend (FR-06).
+- [x] Filter rentang tanggal.
 
 **1e. Achievements (dasar)**
 - [ ] Finalisasi daftar achievement MVP + kriteria.

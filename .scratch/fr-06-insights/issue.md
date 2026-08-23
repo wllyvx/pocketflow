@@ -1,10 +1,12 @@
 ---
 title: FR-06 Financial Insights & Reporting (MVP: category + trend + dynamic date range)
-labels: [ready-for-agent]
-status: open
+labels: [done]
+status: closed
 ---
 
 # FR-06 Financial Insights & Reporting
+
+> **Closed:** All child tickets (01–05) implemented and committed. Net worth deferred to Phase 2 per roadmap; docs synced (USER_FLOW §6 stacked sections, REQUIREMENTS FR-06 annotations, ROADMAP 1d ticked). Manual E2E pass pending user verification with real accounts.
 
 ## Problem Statement
 

@@ -161,15 +161,16 @@ flowchart TD
 
 ## 6. Flow: Insights & Reporting (FR-06)
 
+Dibangun sebagai satu halaman dengan **section bertumpuk** (bukan tab): rentang tanggal di atas mengendalikan semua chart sekaligus. Net Worth (tab ketiga pada desain awal) ditunda ke Fase 2 bersama integrasi Plaid.
+
 ```mermaid
 flowchart TD
-    A[Halaman Insights] --> B[Pilih rentang tanggal]
-    B --> C[Tab: Spending by Category]
-    B --> D[Tab: Income vs Expense]
-    B --> E[Tab: Net Worth]
+    A[Halaman Insights] --> B[Pilih rentang tanggal: 7 hari / bulan ini / 3 bulan / custom]
+    B --> C[Section: Spending by Category bar chart]
+    B --> D[Section: Income vs Expense line chart]
+    B --> E[Dashboard card: Spending Rhythm - current month, link ke Insights]
     C --> F{Ada data?}
     D --> F
-    E --> F
     F -->|Tidak| G[Empty state + saran tambah transaksi]
     F -->|Ya| H[Render chart]
 ```

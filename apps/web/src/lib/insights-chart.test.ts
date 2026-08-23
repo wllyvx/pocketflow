@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { InsightsCategoryTotal } from "@pocketflow/shared";
+import type { InsightsCategoryTotal, InsightsTrendBucket } from "@pocketflow/shared";
 import {
   buildCategoryChart,
   buildSpendingRhythmChart,
+  buildTrendChart,
   formatRupiah,
   resolvePresetRange,
   type RangePreset,
@@ -13,6 +14,18 @@ const category = (name: string, total: number): InsightsCategoryTotal => ({
   name,
   total,
   percentage: 0,
+});
+
+const bucket = (
+  label: string,
+  incomeTotal: number,
+  expenseTotal: number
+): InsightsTrendBucket => ({
+  start: "2026-03-01",
+  end: "2026-03-07",
+  label,
+  incomeTotal,
+  expenseTotal,
 });
 
 describe("buildCategoryChart", () => {
@@ -117,6 +130,83 @@ describe("buildSpendingRhythmChart", () => {
     const result = buildSpendingRhythmChart([10, 20, 30], { width: RHYTHM_WIDTH, height: RHYTHM_HEIGHT });
 
     expect(result.last).toEqual(result.points[result.points.length - 1]);
+  });
+});
+
+describe("buildTrendChart", () => {
+  const WIDTH = 640;
+  const HEIGHT = 200;
+
+  it("signals empty when there are no buckets or both series are all zero", () => {
+    expect(buildTrendChart([], { width: WIDTH, height: HEIGHT }).isEmpty).toBe(true);
+    expect(
+      buildTrendChart([bucket("w1", 0, 0), bucket("w2", 0, 0)], { width: WIDTH, height: HEIGHT }).isEmpty
+    ).toBe(true);
+  });
+
+  it("produces one point per bucket per series spanning the full width", () => {
+    const result = buildTrendChart(
+      [bucket("w1", 10, 40), bucket("w2", 20, 30), bucket("w3", 30, 20)],
+      { width: WIDTH, height: HEIGHT }
+    );
+
+    expect(result.isEmpty).toBe(false);
+    expect(result.incomePoints).toHaveLength(3);
+    expect(result.expensePoints).toHaveLength(3);
+    expect(result.incomePoints[0].x).toBeGreaterThanOrEqual(0);
+    expect(result.incomePoints[2].x).toBe(WIDTH);
+    expect(result.expensePoints[2].x).toBe(WIDTH);
+  });
+
+  it("scales both series against the same combined max so heights are comparable", () => {
+    const result = buildTrendChart(
+      [bucket("w1", 100, 50), bucket("w2", 50, 25)],
+      { width: WIDTH, height: HEIGHT }
+    );
+
+    expect(Math.min(...result.incomePoints.map((p) => p.y))).toBeCloseTo(0, 5);
+    expect(result.incomePoints[1].y).toBeCloseTo(HEIGHT / 2, 5);
+    expect(result.expensePoints[0].y).toBeCloseTo(HEIGHT / 2, 5);
+    expect(result.expensePoints[1].y).toBeCloseTo((HEIGHT * 3) / 4, 5);
+  });
+
+  it("builds polyline and closed area paths for both series", () => {
+    const result = buildTrendChart([bucket("w1", 10, 5), bucket("w2", 20, 10)], { width: WIDTH, height: HEIGHT });
+
+    for (const path of [result.incomePath, result.expensePath]) {
+      expect(path).toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+    }
+    for (const path of [result.incomeAreaPath, result.expenseAreaPath]) {
+      expect(path).toMatch(/V\d+(\.\d+)? H0 Z$/);
+    }
+  });
+
+  it("exposes the last point of each series for end-of-line dots", () => {
+    const result = buildTrendChart([bucket("w1", 10, 5), bucket("w2", 20, 15)], { width: WIDTH, height: HEIGHT });
+
+    expect(result.lastIncome).toEqual(result.incomePoints[result.incomePoints.length - 1]);
+    expect(result.lastExpense).toEqual(result.expensePoints[result.expensePoints.length - 1]);
+  });
+
+  it("carries bucket labels through as axis labels positioned at each point", () => {
+    const result = buildTrendChart(
+      [bucket("Mar 1", 10, 5), bucket("Mar 8", 20, 15), bucket("Mar 15", 30, 25)],
+      { width: WIDTH, height: HEIGHT }
+    );
+
+    expect(result.axisLabels.map((l) => l.text)).toEqual(["Mar 1", "Mar 8", "Mar 15"]);
+    expect(result.axisLabels[2].x).toBe(WIDTH);
+  });
+
+  it("thins axis labels when there are more buckets than fit legibly", () => {
+    const manyBuckets = Array.from({ length: 31 }, (_, i) =>
+      bucket(`Day ${i + 1}`, i + 1, 31 - i)
+    );
+    const result = buildTrendChart(manyBuckets, { width: WIDTH, height: HEIGHT });
+
+    expect(result.axisLabels.length).toBeLessThanOrEqual(8);
+    expect(result.axisLabels[0].text).toBe("Day 1");
+    expect(result.axisLabels.at(-1)?.text).toBe("Day 31");
   });
 });
 

@@ -1,4 +1,4 @@
-import type { InsightsCategoryTotal } from "@pocketflow/shared";
+import type { InsightsCategoryTotal, InsightsTrendBucket } from "@pocketflow/shared";
 
 export type RangePreset = "7d" | "month" | "3m";
 
@@ -131,4 +131,97 @@ export function buildSpendingRhythmChart(
   const areaPath = `${linePath} V${height} H0 Z`;
 
   return { points, last: points[points.length - 1], linePath, areaPath, isEmpty: false };
+}
+
+export interface TrendAxisLabel {
+  x: number;
+  text: string;
+}
+
+export interface TrendChart {
+  incomePoints: RhythmPoint[];
+  expensePoints: RhythmPoint[];
+  lastIncome: RhythmPoint;
+  lastExpense: RhythmPoint;
+  incomePath: string;
+  expensePath: string;
+  incomeAreaPath: string;
+  expenseAreaPath: string;
+  axisLabels: TrendAxisLabel[];
+  isEmpty: boolean;
+}
+
+const MAX_AXIS_LABELS = 8;
+
+const toLine = (points: RhythmPoint[]): string =>
+  points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${formatCoord(point.x)} ${formatCoord(point.y)}`)
+    .join(" ");
+
+const toArea = (points: RhythmPoint[], height: number): string =>
+  `${toLine(points)} V${height} H0 Z`;
+
+export function buildTrendChart(
+  buckets: InsightsTrendBucket[],
+  options?: { width?: number; height?: number }
+): TrendChart {
+  const width = options?.width ?? 640;
+  const height = options?.height ?? 200;
+
+  if (
+    buckets.length === 0 ||
+    !buckets.some((b) => b.incomeTotal > 0 || b.expenseTotal > 0)
+  ) {
+    return {
+      incomePoints: [],
+      expensePoints: [],
+      lastIncome: { x: 0, y: height },
+      lastExpense: { x: 0, y: height },
+      incomePath: "",
+      expensePath: "",
+      incomeAreaPath: "",
+      expenseAreaPath: "",
+      axisLabels: [],
+      isEmpty: true,
+    };
+  }
+
+  const step = buckets.length > 1 ? width / (buckets.length - 1) : width;
+  const maxTotal = Math.max(
+    ...buckets.flatMap((b) => [b.incomeTotal, b.expenseTotal])
+  );
+
+  const scalePoints = (pick: (b: InsightsTrendBucket) => number): RhythmPoint[] =>
+    buckets.map((b, index) => ({
+      x: index * step,
+      y: maxTotal === 0 ? height : height - (pick(b) / maxTotal) * height,
+    }));
+
+  const incomePoints = scalePoints((b) => b.incomeTotal);
+  const expensePoints = scalePoints((b) => b.expenseTotal);
+
+  let labelIndexes = buckets.map((_, index) => index);
+  if (labelIndexes.length > MAX_AXIS_LABELS) {
+    labelIndexes = Array.from(
+      { length: MAX_AXIS_LABELS },
+      (_, i) => Math.round((i * (buckets.length - 1)) / (MAX_AXIS_LABELS - 1))
+    );
+  }
+  const axisLabels = labelIndexes.map((index) => ({
+    x: index * step,
+    text: buckets[index].label,
+  }));
+
+  return {
+    incomePoints,
+    expensePoints,
+    lastIncome: incomePoints[incomePoints.length - 1],
+    lastExpense: expensePoints[expensePoints.length - 1],
+    incomePath: toLine(incomePoints),
+    expensePath: toLine(expensePoints),
+    incomeAreaPath: toArea(incomePoints, height),
+    expenseAreaPath: toArea(expensePoints, height),
+    axisLabels,
+    isEmpty: false,
+  };
 }

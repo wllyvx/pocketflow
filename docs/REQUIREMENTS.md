@@ -84,12 +84,14 @@ Fitur berikut **DITUNDA** ke fase berikutnya (lihat ROADMAP.md):
   - Halaman "My Achievements" menampilkan status locked/unlocked semua achievement.
 
 ### FR-06: Financial Insights & Reporting
-- Spending by category (pie/bar chart) untuk rentang tanggal yang dipilih.
-- Income vs Expense trend (line chart).
-- Net worth over time — MVP: dihitung sederhana dari total saldo akun manual + saldo envelope (tanpa integrasi Plaid), dengan disclaimer bahwa ini estimasi.
-- Filter rentang tanggal: 7 hari, bulan berjalan, 3 bulan, custom.
+- Spending by category (pie/bar chart) untuk rentang tanggal yang dipilih. ✅ Phase 1: horizontal bar chart di `/insights`.
+- Income vs Expense trend (line chart). ✅ Phase 1: line chart dengan granularity otomatis (daily/weekly/monthly) dari API.
+- Net worth over time — **ditunda ke Fase 2** bersama item roadmap Plaid ("Net Worth calculation di Insights diperbarui memakai saldo real dari Plaid"); tidak termasuk dalam MVP Phase 1.
+- Filter rentang tanggal: 7 hari, bulan berjalan, 3 bulan, custom. ✅ Phase 1.
+- Dashboard "Spending Rhythm" card menampilkan data current month dari endpoint insights yang sama dan link ke `/insights`. ✅ Phase 1.
 - **Acceptance Criteria:**
-  - Chart menampilkan empty state yang jelas bila tidak ada data pada rentang dipilih.
+  - Chart menampilkan empty state yang jelas bila tidak ada data pada rentang dipilih. ✅
+  - ~~Net worth over time~~ — deferred (lihat catatan di atas).
 
 ### FR-07: Receipt Attachment & Storage
 - User dapat upload gambar (JPEG/PNG, maks 5MB) saat menambah/mengedit transaksi.
