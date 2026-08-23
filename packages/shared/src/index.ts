@@ -289,3 +289,36 @@ export interface EnvelopeItem {
 /* -------------------------------------------------------------------------- */
 
 export * from './envelope-health.js';
+
+/* -------------------------------------------------------------------------- */
+/*                                Achievements                                */
+/* -------------------------------------------------------------------------- */
+
+export const achievementTierSchema = z.enum(["bronze", "silver", "gold", "platinum"]);
+export type AchievementTier = z.infer<typeof achievementTierSchema>;
+
+export const achievementDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  tier: achievementTierSchema,
+});
+export type AchievementDefinition = z.infer<typeof achievementDefinitionSchema>;
+
+export const achievementItemSchema = achievementDefinitionSchema.extend({
+  unlocked: z.boolean(),
+  unlockedAt: z.string().nullable(),
+});
+export type AchievementItem = z.infer<typeof achievementItemSchema>;
+
+export const achievementResponseSchema = z.object({
+  achievements: z.array(achievementItemSchema),
+});
+export type AchievementResponse = z.infer<typeof achievementResponseSchema>;
+
+export const achievementUnlockNotificationSchema = achievementDefinitionSchema.extend({
+  unlockedAt: z.string().nullable(),
+});
+export type AchievementUnlockNotification = z.infer<typeof achievementUnlockNotificationSchema>;
+
