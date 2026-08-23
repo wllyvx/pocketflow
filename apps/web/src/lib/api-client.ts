@@ -148,14 +148,12 @@ export async function getAchievements(token: string) {
   return request<{ success: true; data: AchievementItem[] }>("/api/achievements", token);
 }
 
-/** Dispatch a UI event when a mutating response carries newly unlocked achievements. */
-export function notifyAchievementsUnlocked(data: unknown) {
+function notifyAchievementsUnlocked(data: unknown) {
   const unlocked = (data as { achievementsUnlocked?: AchievementUnlockNotification[] } | undefined)?.achievementsUnlocked;
   if (Array.isArray(unlocked) && unlocked.length > 0) {
     document.dispatchEvent(new CustomEvent("pocketflow:achievements-unlocked", { detail: unlocked }));
   }
 }
-
 
 /** Retrieve paginated list of transactions */
 export async function getTransactions(token: string, query?: ListTransactionsQuery) {

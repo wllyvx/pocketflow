@@ -16,9 +16,6 @@
   const TOAST_VISIBLE_MS = 4500;
   const TOAST_STAGGER_MS = 600;
 
-  let queue: AchievementUnlockNotification[] = [];
-  let showing = false;
-
   const showToast = (achievement: AchievementUnlockNotification) => {
     const container = document.querySelector('#achievement-toast-container');
     if (!container) return;
@@ -27,7 +24,26 @@
     const toast = document.createElement('div');
     toast.setAttribute('role', 'status');
     toast.className = 'achievement-toast pointer-events-auto flex items-center gap-3 rounded-lg border border-[#BFE3D2] bg-white px-4 py-3 shadow-[0_12px_32px_rgba(23,37,51,.16)]';
-    toast.innerHTML = `<span class="grid h-10 w-10 flex-none place-items-center rounded-md bg-[#E0F4ED] text-lg" aria-hidden="true">${glyph}</span><div class="min-w-0"><p class="text-[9px] font-bold uppercase tracking-[0.11em] text-[#42A27E]">Achievement unlocked!</p><h3 class="font-display text-[13px] font-bold text-[#334154]">${achievement.name}</h3><p class="mt-0.5 truncate text-[11px] text-[#687586]">${achievement.description}</p></div>`;
+
+    const icon = document.createElement('span');
+    icon.className = 'grid h-10 w-10 flex-none place-items-center rounded-md bg-[#E0F4ED] text-lg';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = glyph;
+
+    const body = document.createElement('div');
+    body.className = 'min-w-0';
+    const kicker = document.createElement('p');
+    kicker.className = 'text-[9px] font-bold uppercase tracking-[0.11em] text-[#42A27E]';
+    kicker.textContent = 'Achievement unlocked!';
+    const title = document.createElement('h3');
+    title.className = 'font-display text-[13px] font-bold text-[#334154]';
+    title.textContent = achievement.name;
+    const description = document.createElement('p');
+    description.className = 'mt-1 truncate text-[11px] text-[#687586]';
+    description.textContent = achievement.description;
+    body.append(kicker, title, description);
+
+    toast.append(icon, body);
     container.append(toast);
 
     requestAnimationFrame(() => toast.classList.add('is-visible'));
@@ -37,24 +53,24 @@
     }, TOAST_VISIBLE_MS);
   };
 
+  let queue: AchievementUnlockNotification[] = [];
+  let showing = false;
+
   const processQueue = () => {
     if (showing) return;
+    const achievement = queue.shift();
+    if (!achievement) return;
     showing = true;
-    while (queue.length > 0) {
-      const achievement = queue.shift() as AchievementUnlockNotification;
-      showToast(achievement);
-      setTimeout(() => {
-        showing = false;
-        processQueue();
-      }, TOAST_STAGGER_MS);
-    }
+    showToast(achievement);
+    setTimeout(() => {
+      showing = false;
+      processQueue();
+    }, TOAST_STAGGER_MS);
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
-    document.addEventListener('pocketflow:achievements-unlocked', (event) => {
-      queue.push(...(event as CustomEvent<AchievementUnlockNotification[]>).detail);
-      processQueue();
-    });
+  document.addEventListener('pocketflow:achievements-unlocked', (event) => {
+    queue.push(...(event as CustomEvent<AchievementUnlockNotification[]>).detail);
+    processQueue();
   });
 </script>
 
