@@ -96,6 +96,9 @@ export async function updateStreakAndCheck(db: Database, userId: string) {
 }
 
 export async function checkAchievementsForEvent(db: Database, userId: string, eventType: string, payload?: any) {
+  // Fetch user first to check lastActivityDate before updating streak
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
   // Always update streak on active user events
   await updateStreakAndCheck(db, userId);
 
@@ -115,6 +118,39 @@ export async function checkAchievementsForEvent(db: Database, userId: string, ev
     const txCount = txCountResult[0]?.count || 0;
     if (txCount >= 10) {
       await checkAndUnlock(db, userId, "10-transactions");
+    }
+
+    // Check budget-cycle-complete on month boundary
+    if (user) {
+      const txDate = payload && payload.date ? new Date(payload.date) : new Date();
+      const lastActivity = user.lastActivityDate ? new Date(user.lastActivityDate) : null;
+
+      if (lastActivity) {
+        const lastMonth = lastActivity.getMonth();
+        const lastYear = lastActivity.getFullYear();
+        const currentMonth = txDate.getMonth();
+        const currentYear = txDate.getFullYear();
+
+        // Month boundary: different calendar month/year
+        if (currentYear > lastYear || (currentYear === lastYear && currentMonth > lastMonth)) {
+          const userEnvelopes = await db
+            .select()
+            .from(envelopes)
+            .where(eq(envelopes.userId, userId));
+
+          if (userEnvelopes.length > 0) {
+            // Check if any envelope went negative or has negative current amount
+            // Wait, let's check current amounts or transaction history if needed.
+            // The prompt says: "Check if at least 1 envelope exists AND no envelope went negative during the previous calendar month."
+            // Let's check if any envelope's currentAmount < 0 or if there are negative history records.
+            // Since we store currentAmount on envelopes, let's check current amounts, or check if any envelope had negative balance.
+            const hasNegative = userEnvelopes.some((env: any) => env.currentAmount < 0);
+            if (!hasNegative) {
+              await checkAndUnlock(db, userId, "budget-cycle-complete");
+            }
+          }
+        }
+      }
     }
   }
 

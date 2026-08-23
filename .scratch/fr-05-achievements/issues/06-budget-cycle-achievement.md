@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] In `checkAchievementsForEvent` for `transaction_created`, detect month boundary (transaction date month ≠ user's lastActivityDate month)
-- [ ] On month boundary: query all user envelopes and all transactions in previous calendar month
-- [ ] Check if any envelope had `currentAmount < 0` during previous month (via transaction snapshots or aggregate logic)
-- [ ] If at least 1 envelope exists AND no envelope went negative: unlock `budget-cycle-complete`
-- [ ] Manual test: user logs transactions all month without any envelope going negative, then logs first transaction of next month → achievement unlocks
-- [ ] Manual test: user with zero envelopes → achievement does not unlock
-- [ ] Manual test: user with one envelope that went negative in previous month → achievement does not unlock
+- [x] In `checkAchievementsForEvent` for `transaction_created`, detect month boundary (transaction date month ≠ user's lastActivityDate month)
+- [x] On month boundary: query all user envelopes and all transactions in previous calendar month
+- [x] Check if any envelope had `currentAmount < 0` during previous month (via transaction snapshots or aggregate logic)
+- [x] If at least 1 envelope exists AND no envelope went negative: unlock `budget-cycle-complete`
+- [x] Manual test: user logs transactions all month without any envelope going negative, then logs first transaction of next month → achievement unlocks
+- [x] Manual test: user with zero envelopes → achievement does not unlock
+- [x] Manual test: user with one envelope that went negative in previous month → achievement does not unlock

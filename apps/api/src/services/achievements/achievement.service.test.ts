@@ -143,4 +143,70 @@ describe("Achievement Service", () => {
     user = sqlite.prepare("SELECT current_streak FROM users WHERE id = ?").get(userId) as any;
     expect(user.current_streak).toBe(1);
   });
+
+  describe("budget-cycle-complete", () => {
+    beforeEach(() => {
+      sqlite.prepare(
+        "INSERT INTO categories (id, user_id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("cat-1", userId, "Food", "expense", Date.now(), Date.now());
+    });
+
+    it("should unlock budget-cycle-complete when logging first transaction in new month with no negative envelopes", async () => {
+      sqlite.prepare(
+        "INSERT INTO envelopes (id, user_id, category_id, name, budgeted_amount, current_amount, reset_frequency, last_reset_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run("env-1", userId, "cat-1", "Groceries", 100, 50, "monthly", Date.now(), Date.now(), Date.now());
+
+      // Set user's last activity date to previous month
+      const prevMonth = new Date(2025, 0, 15); // Jan 15, 2025
+      sqlite.prepare("UPDATE users SET last_activity_date = ? WHERE id = ?").run(prevMonth.getTime(), userId);
+
+      // New transaction in Feb 2025
+      const newMonthDate = new Date(2025, 1, 1); // Feb 1, 2025
+      await checkAchievementsForEvent(db, userId, "transaction_created", { date: newMonthDate });
+
+      const achievements = await getUserAchievements(db, userId);
+      expect(achievements.find((a: any) => a.id === "budget-cycle-complete")?.unlocked).toBe(true);
+    });
+
+    it("should not unlock budget-cycle-complete if user has zero envelopes", async () => {
+      const prevMonth = new Date(2025, 0, 15);
+      sqlite.prepare("UPDATE users SET last_activity_date = ? WHERE id = ?").run(prevMonth.getTime(), userId);
+
+      const newMonthDate = new Date(2025, 1, 1);
+      await checkAchievementsForEvent(db, userId, "transaction_created", { date: newMonthDate });
+
+      const achievements = await getUserAchievements(db, userId);
+      expect(achievements.find((a: any) => a.id === "budget-cycle-complete")?.unlocked).toBe(false);
+    });
+
+    it("should not unlock budget-cycle-complete if any envelope is negative", async () => {
+      sqlite.prepare(
+        "INSERT INTO envelopes (id, user_id, category_id, name, budgeted_amount, current_amount, reset_frequency, last_reset_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run("env-1", userId, "cat-1", "Groceries", 100, -20, "monthly", Date.now(), Date.now(), Date.now());
+
+      const prevMonth = new Date(2025, 0, 15);
+      sqlite.prepare("UPDATE users SET last_activity_date = ? WHERE id = ?").run(prevMonth.getTime(), userId);
+
+      const newMonthDate = new Date(2025, 1, 1);
+      await checkAchievementsForEvent(db, userId, "transaction_created", { date: newMonthDate });
+
+      const achievements = await getUserAchievements(db, userId);
+      expect(achievements.find((a: any) => a.id === "budget-cycle-complete")?.unlocked).toBe(false);
+    });
+
+    it("should not unlock budget-cycle-complete if transaction is in the same month", async () => {
+      sqlite.prepare(
+        "INSERT INTO envelopes (id, user_id, category_id, name, budgeted_amount, current_amount, reset_frequency, last_reset_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run("env-1", userId, "cat-1", "Groceries", 100, 50, "monthly", Date.now(), Date.now(), Date.now());
+
+      const sameMonth = new Date(2025, 0, 5);
+      sqlite.prepare("UPDATE users SET last_activity_date = ? WHERE id = ?").run(sameMonth.getTime(), userId);
+
+      const nextDaySameMonth = new Date(2025, 0, 10);
+      await checkAchievementsForEvent(db, userId, "transaction_created", { date: nextDaySameMonth });
+
+      const achievements = await getUserAchievements(db, userId);
+      expect(achievements.find((a: any) => a.id === "budget-cycle-complete")?.unlocked).toBe(false);
+    });
+  });
 });
