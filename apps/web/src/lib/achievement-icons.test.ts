@@ -23,10 +23,12 @@ describe("getAchievementIcon", () => {
     ["ListOrdered", "list-ordered"],
     ["ShieldCheck", "shield-check"],
     ["Trophy", "trophy"],
-  ])("maps %s to the %s lucide icon", (identifier, kebab) => {
+    ["CheckCircle2", "circle-check"],
+    ["RotateCw", "rotate-cw"],
+  ])("maps %s to the %s lucide icon", (identifier, lucideClass) => {
     const svg = getAchievementIcon(identifier);
     expect(svg).toContain("<svg");
-    expect(svg.toLowerCase()).toContain(`lucide lucide-${kebab}`);
+    expect(svg.toLowerCase()).toContain(`lucide-${lucideClass}`);
   });
 
   it("accepts already-kebab-case identifiers", () => {

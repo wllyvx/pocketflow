@@ -1,4 +1,4 @@
-import { Flame, FolderPlus, ListOrdered, Receipt, ShieldCheck, Trophy, Wallet } from "lucide-static";
+import { CheckCircle2, Flame, FolderPlus, ListOrdered, Receipt, RotateCw, ShieldCheck, Trophy, Wallet } from "lucide-static";
 
 const ICON_MAP: Record<string, string> = {
   "folder-plus": FolderPlus,
@@ -8,6 +8,8 @@ const ICON_MAP: Record<string, string> = {
   "list-ordered": ListOrdered,
   "shield-check": ShieldCheck,
   trophy: Trophy,
+  "check-circle2": CheckCircle2,
+  "rotate-cw": RotateCw,
 };
 
 export function normalizeIconIdentifier(identifier: string): string {
