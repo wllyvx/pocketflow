@@ -31,6 +31,18 @@
   </form>
 </dialog>
 
+<dialog class="w-[min(420px,calc(100vw-32px))] rounded-lg border-0 p-0 shadow-[0_20px_60px_rgba(23,37,51,.18)]" data-envelope-prompt-dialog>
+  <form class="p-5" data-envelope-prompt-form>
+    <p class="text-sm font-semibold text-[#263548]" data-envelope-prompt-message></p>
+    <label class="mt-4 block text-xs font-bold text-[#657386] hidden" data-envelope-prompt-input-label>Value<input class="mt-1.5 block w-full rounded border border-[#DFE5E0] px-3 py-2.5 text-sm font-normal" data-envelope-prompt-input /></label>
+    <label class="mt-4 block text-xs font-bold text-[#657386] hidden" data-envelope-prompt-select-label>Target<select class="mt-1.5 block w-full rounded border border-[#DFE5E0] px-3 py-2.5 text-sm font-normal" data-envelope-prompt-select></select></label>
+    <div class="mt-5 flex justify-end gap-2">
+      <button class="rounded border border-[#DFE5E0] px-3 py-2 text-xs font-bold text-[#657386]" data-envelope-prompt-cancel type="button">Cancel</button>
+      <button class="rounded bg-coral-500 px-3 py-2 text-xs font-bold text-white" type="submit">Confirm</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
   import { createEnvelope, deleteEnvelope, fillEnvelope, getEnvelopeDeletePreview, getEnvelopes, transferEnvelope, updateEnvelope } from '../lib/api-client';
   import type { DeleteEnvelopeInput, EnvelopeItem } from '@pocketflow/shared';
@@ -47,6 +59,44 @@
   const show = (element: Element | null, message: string) => { if (element) { element.textContent = message; element.classList.remove('hidden'); } };
   const clearMessages = () => { errorBox?.classList.add('hidden'); statusBox?.classList.add('hidden'); };
   const field = (name: string) => document.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-envelope-${name}]`);
+
+  const promptDialog = document.querySelector('[data-envelope-prompt-dialog]') as HTMLDialogElement | null;
+  const promptForm = document.querySelector('[data-envelope-prompt-form]') as HTMLFormElement | null;
+  const promptMessage = document.querySelector('[data-envelope-prompt-message]');
+  const promptInputLabel = document.querySelector('[data-envelope-prompt-input-label]');
+  const promptInput = document.querySelector('[data-envelope-prompt-input]') as HTMLInputElement | null;
+  const promptSelectLabel = document.querySelector('[data-envelope-prompt-select-label]');
+  const promptSelect = document.querySelector('[data-envelope-prompt-select]') as HTMLSelectElement | null;
+  let resolvePrompt: ((value: string | null) => void) | null = null;
+
+  type PromptOptions = { message: string; inputType?: 'number' | 'text'; defaultValue?: string; options?: Array<{ value: string; label: string }>; confirmOnly?: boolean };
+  const ask = ({ message, inputType = 'number', defaultValue = '', options, confirmOnly = false }: PromptOptions): Promise<string | null> => {
+    if (!promptDialog) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      resolvePrompt = resolve;
+      if (promptMessage) promptMessage.textContent = message;
+      const useSelect = !confirmOnly && Boolean(options?.length);
+      const useInput = !confirmOnly && !useSelect;
+      promptInputLabel?.classList.toggle('hidden', !useInput);
+      promptSelectLabel?.classList.toggle('hidden', !useSelect);
+      if (promptInput && useInput) { promptInput.type = inputType; promptInput.value = defaultValue; }
+      if (promptSelect && options) { promptSelect.replaceChildren(...options.map(({ value, label }) => { const option = document.createElement('option'); option.value = value; option.textContent = label; return option; })); }
+      promptDialog.showModal();
+    });
+  };
+  const settle = (value: string | null) => {
+    const resolve = resolvePrompt;
+    resolvePrompt = null;
+    promptDialog?.close();
+    resolve?.(value);
+  };
+  promptForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const useSelect = !promptSelectLabel?.classList.contains('hidden');
+    settle(useSelect ? (promptSelect?.value ?? '') : (promptInput?.value ?? ''));
+  });
+  document.querySelector('[data-envelope-prompt-cancel]')?.addEventListener('click', () => settle(null));
+  promptDialog?.addEventListener('close', () => { const resolve = resolvePrompt; resolvePrompt = null; resolve?.(null); });
 
   const load = async () => {
     const result = await getEnvelopes(token());
@@ -125,16 +175,26 @@ Status: ${statusLabels[healthData.status]}`;
     if (!item) return;
     try {
       if (button.dataset.envelopeAction === 'edit') return openForm(item);
-      if (button.dataset.envelopeAction === 'fill') { const amount = Number(window.prompt(`Amount to fill ${item.name}:`, '0')); if (amount > 0) { await fillEnvelope(token(), item.id, { amount }); await load(); show(statusBox, 'Envelope filled.'); } return; }
-      if (button.dataset.envelopeAction === 'transfer') { const target = window.prompt('Destination envelope ID:'); const amount = Number(window.prompt('Amount to transfer:', '0')); if (target && amount > 0) { await transferEnvelope(token(), { fromEnvelopeId: item.id, toEnvelopeId: target, amount }); await load(); show(statusBox, 'Funds transferred.'); } return; }
+      if (button.dataset.envelopeAction === 'fill') { const amount = Number(await ask({ message: `Amount to fill ${item.name}:`, inputType: 'number', defaultValue: '0' })); if (amount > 0) { await fillEnvelope(token(), item.id, { amount }); await load(); show(statusBox, 'Envelope filled.'); } return; }
+      if (button.dataset.envelopeAction === 'transfer') {
+        const others = state.envelopes.filter((envelope) => envelope.id !== item.id);
+        if (others.length === 0) { show(errorBox, 'No other envelope available as transfer target.'); return; }
+        const target = await ask({ message: 'Destination envelope:', options: others.map((envelope) => ({ value: envelope.id, label: envelope.name })) });
+        if (!target) return;
+        const amount = Number(await ask({ message: 'Amount to transfer:', inputType: 'number', defaultValue: '0' }));
+        if (amount > 0) { await transferEnvelope(token(), { fromEnvelopeId: item.id, toEnvelopeId: target, amount }); await load(); show(statusBox, 'Funds transferred.'); }
+        return;
+      }
       const preview = (await getEnvelopeDeletePreview(token(), item.id)).data;
       let input: DeleteEnvelopeInput = { returnToAvailableToSpend: false };
       if (preview.requiresBalanceAction) {
-        const target = window.prompt(`${money(preview.currentAmount)} remains. Enter target envelope ID, or type AVAILABLE:`, 'AVAILABLE');
+        const others = state.envelopes.filter((envelope) => envelope.id !== item.id);
+        const choices = [...others.map((envelope) => ({ value: envelope.id, label: envelope.name })), { value: 'AVAILABLE', label: 'Return to Available to Spend' }];
+        const target = await ask({ message: `${money(preview.currentAmount)} remains. Choose where the balance should go:`, options: choices });
         if (!target) return;
         input = target.toUpperCase() === 'AVAILABLE' ? { returnToAvailableToSpend: true } : { transferToEnvelopeId: target, returnToAvailableToSpend: false };
       }
-      if (window.confirm(`Delete ${item.name}? ${preview.relatedTransactionCount} related transactions will be removed.`)) { await deleteEnvelope(token(), item.id, input); await load(); show(statusBox, 'Envelope deleted.'); }
+      if (await ask({ message: `Delete ${item.name}? ${preview.relatedTransactionCount} related transactions will be removed.`, confirmOnly: true })) { await deleteEnvelope(token(), item.id, input); await load(); show(statusBox, 'Envelope deleted.'); }
     } catch (value) { show(errorBox, value instanceof Error ? value.message : 'Envelope action failed.'); }
   });
 
