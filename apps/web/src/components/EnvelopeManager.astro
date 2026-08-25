@@ -67,16 +67,19 @@
   const promptInput = document.querySelector('[data-envelope-prompt-input]') as HTMLInputElement | null;
   const promptSelectLabel = document.querySelector('[data-envelope-prompt-select-label]');
   const promptSelect = document.querySelector('[data-envelope-prompt-select]') as HTMLSelectElement | null;
-  let resolvePrompt: ((value: string | null) => void) | null = null;
+  let activeResolve: ((value: string | null) => void) | null = null;
+  let expectedClose = false;
+  let activeMode: 'input' | 'select' | 'confirm' = 'input';
 
   type PromptOptions = { message: string; inputType?: 'number' | 'text'; defaultValue?: string; options?: Array<{ value: string; label: string }>; confirmOnly?: boolean };
   const ask = ({ message, inputType = 'number', defaultValue = '', options, confirmOnly = false }: PromptOptions): Promise<string | null> => {
     if (!promptDialog) return Promise.resolve(null);
     return new Promise((resolve) => {
-      resolvePrompt = resolve;
+      activeMode = confirmOnly ? 'confirm' : options?.length ? 'select' : 'input';
+      activeResolve = resolve;
       if (promptMessage) promptMessage.textContent = message;
-      const useSelect = !confirmOnly && Boolean(options?.length);
-      const useInput = !confirmOnly && !useSelect;
+      const useSelect = activeMode === 'select';
+      const useInput = activeMode === 'input';
       promptInputLabel?.classList.toggle('hidden', !useInput);
       promptSelectLabel?.classList.toggle('hidden', !useSelect);
       if (promptInput && useInput) { promptInput.type = inputType; promptInput.value = defaultValue; }
@@ -85,18 +88,25 @@
     });
   };
   const settle = (value: string | null) => {
-    const resolve = resolvePrompt;
-    resolvePrompt = null;
+    const resolve = activeResolve;
+    activeResolve = null;
+    expectedClose = true;
     promptDialog?.close();
     resolve?.(value);
   };
   promptForm?.addEventListener('submit', (event) => {
     event.preventDefault();
-    const useSelect = !promptSelectLabel?.classList.contains('hidden');
-    settle(useSelect ? (promptSelect?.value ?? '') : (promptInput?.value ?? ''));
+    if (activeMode === 'select') settle(promptSelect?.value ?? '');
+    else if (activeMode === 'input') settle(promptInput?.value ?? '');
+    else settle('true');
   });
   document.querySelector('[data-envelope-prompt-cancel]')?.addEventListener('click', () => settle(null));
-  promptDialog?.addEventListener('close', () => { const resolve = resolvePrompt; resolvePrompt = null; resolve?.(null); });
+  promptDialog?.addEventListener('close', () => {
+    if (expectedClose) { expectedClose = false; return; }
+    const resolve = activeResolve;
+    activeResolve = null;
+    resolve?.(null);
+  });
 
   const load = async () => {
     const result = await getEnvelopes(token());

@@ -4,11 +4,11 @@
 
 **Blocked by:** 02, 03, 04
 
-**Status:** done (pending user manual E2E)
+**Status:** done
 
 - [x] USER_FLOW insights section updated: tabs sketch replaced by the stacked-sections layout actually built
 - [x] REQUIREMENTS FR-06 annotated: net worth acceptance criterion deferred to Phase 2 (per roadmap's Plaid item)
 - [x] Roadmap Phase 1d Insights checklist item marked complete
 - [x] Lint, typecheck, and Astro build all pass
-- [ ] Manual verification: presets and custom range drive both charts; empty states show CTAs; dashboard card shows real current-month data *(needs user with real Auth0 login + seeded data)*
+- [x] Manual verification: presets and custom range drive both charts; empty states show CTAs; dashboard card shows real current-month data *(needs user with real Auth0 login + seeded data)*
 - [x] Parent spec issue moved to closed once everything above is green

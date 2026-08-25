@@ -101,6 +101,10 @@ Progress for each functional requirement (FR) is tracked in `progress/FR-XX/` (e
 - **Monorepo:** pnpm workspaces
 - **Deploy:** `wrangler deploy` (single target: Cloudflare Workers)
 
+## Dev Account for testing
+email: dev-account@test.com
+password: Dev-Account12345
+
 ## Token Optimization & Codebase Memory MCP
 You must maximize token efficiency. NEVER read raw code files or use full-text grep to discover repository structures, call chains, or dependencies. Instead, ALWAYS leverage the active `codebase-memory-mcp` knowledge graph using these rules:
 - **Symbol Discovery:** Use `search_graph` or `get_architecture` to locate functions, classes, and types instead of opening files.
