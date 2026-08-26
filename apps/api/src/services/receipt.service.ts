@@ -94,6 +94,8 @@ export async function serveReceipt(
   userId: string,
   key: string
 ): Promise<ServedReceipt> {
+  // Ownership boundary. Safe only because R2 keys are literal and keys are
+  // server-generated — see docs/adr/0001-receipt-key-isolation-literal-keys.md
   if (!key.startsWith(`${userId}/`)) {
     throw new ServiceError(
       "RECEIPT_FORBIDDEN",
