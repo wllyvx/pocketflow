@@ -376,7 +376,7 @@ transactionsRouter.delete("/:id", async (context) => {
 
   const id = context.req.param("id");
   try {
-    await deleteTransaction(database, user.id, id);
+    await deleteTransaction(database, user.id, id, context.env.RECEIPTS_BUCKET);
     return context.json({
       success: true,
       message: "Transaction deleted successfully.",

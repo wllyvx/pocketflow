@@ -8,6 +8,7 @@ import type {
 } from "@pocketflow/shared";
 import type { createDb } from "../db/client";
 import { envelopes, transactions } from "../db/schema";
+import { deleteReceipt, receiptKeyFromUrl } from "./receipt.service";
 
 type Database = ReturnType<typeof createDb>;
 
@@ -457,7 +458,8 @@ export async function updateTransaction(
 export async function deleteTransaction(
   db: Database,
   userId: string,
-  id: string
+  id: string,
+  bucket?: R2Bucket
 ): Promise<void> {
   const [existing] = await db
     .select()
@@ -541,4 +543,16 @@ export async function deleteTransaction(
   await db
     .delete(transactions)
     .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+
+  // Best-effort cleanup of the receipt object in storage.
+  if (bucket && existing.receiptUrl) {
+    const key = receiptKeyFromUrl(existing.receiptUrl);
+    if (key) {
+      try {
+        await deleteReceipt(bucket, userId, key);
+      } catch (cleanupError) {
+        console.error("Failed to clean up deleted transaction's receipt:", cleanupError);
+      }
+    }
+  }
 }

@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Hapus transaksi berikut struknya menghapus objek R2 terkait
-- [ ] Hapus transaksi tanpa struk tetap berjalan normal tanpa efek samping storage
-- [ ] Verifikasi lewat test service dengan fake bucket yang sama dengan ticket 01
+- [x] Hapus transaksi berikut struknya menghapus objek R2 terkait
+- [x] Hapus transaksi tanpa struk tetap berjalan normal tanpa efek samping storage
+- [x] Verifikasi lewat test service dengan fake bucket yang sama dengan ticket 01
