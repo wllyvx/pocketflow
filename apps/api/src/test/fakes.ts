@@ -23,5 +23,8 @@ export function createFakeBucket() {
     async head(key: string) {
       return store.has(key) ? ({} as R2Object) : null;
     },
+    async delete(key: string) {
+      store.delete(key);
+    },
   } as unknown as R2Bucket;
 }

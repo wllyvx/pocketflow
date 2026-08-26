@@ -119,3 +119,51 @@ export async function serveReceipt(
       object.httpMetadata?.contentType ?? "application/octet-stream",
   };
 }
+
+export function receiptKeyFromUrl(url: string): string | null {
+  const prefix = "/api/receipts/";
+  if (!url.startsWith(prefix)) return null;
+  const key = url.slice(prefix.length);
+  return key === "" ? null : key;
+}
+
+/**
+ * Deletes the previously stored receipt object when an update replaces or
+ * clears the receipt reference. A no-op when the update omits the field
+ * (`undefined`) or keeps the same reference.
+ */
+export async function cleanupReplacedReceipt(
+  bucket: R2Bucket,
+  userId: string,
+  previousReceiptUrl: string | null,
+  inputReceiptUrl: string | null | undefined
+): Promise<void> {
+  if (inputReceiptUrl === undefined) return;
+
+  const nextUrl =
+    inputReceiptUrl && inputReceiptUrl.trim() !== "" ? inputReceiptUrl.trim() : null;
+  if (!previousReceiptUrl || previousReceiptUrl === nextUrl) return;
+
+  const key = receiptKeyFromUrl(previousReceiptUrl);
+  if (!key) return;
+
+  await deleteReceipt(bucket, userId, key);
+}
+
+export async function deleteReceipt(
+  bucket: R2Bucket,
+  userId: string,
+  key: string
+): Promise<void> {
+  // Ownership boundary. Safe only because R2 keys are literal and keys are
+  // server-generated — see docs/adr/0001-receipt-key-isolation-literal-keys.md
+  if (!key.startsWith(`${userId}/`)) {
+    throw new ServiceError(
+      "RECEIPT_FORBIDDEN",
+      "You do not have access to this receipt.",
+      403
+    );
+  }
+
+  await bucket.delete(key);
+}

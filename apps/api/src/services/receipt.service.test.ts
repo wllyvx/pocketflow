@@ -2,7 +2,10 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_RECEIPT_SIZE_BYTES,
+  cleanupReplacedReceipt,
+  deleteReceipt,
   receiptKeyFor,
+  receiptKeyFromUrl,
   serveReceipt,
   uploadReceipt,
 } from "./receipt.service";
@@ -85,5 +88,65 @@ describe("FR-07 receipt storage contract", () => {
     const bucket = createFakeBucket();
     await expect(serveReceipt(bucket, "user-1", receiptKeyFor("user-1", "jpg")))
       .rejects.toMatchObject({ code: "RECEIPT_NOT_FOUND", statusCode: 404 });
+  });
+
+  it("deletes a receipt owned by the requesting user", async () => {
+    const bucket = createFakeBucket();
+    const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+    await expect(deleteReceipt(bucket, "user-1", key)).resolves.toBeUndefined();
+    await expect(serveReceipt(bucket, "user-1", key))
+      .rejects.toMatchObject({ code: "RECEIPT_NOT_FOUND" });
+  });
+
+  it("refuses to delete a receipt whose key belongs to another user", async () => {
+    const bucket = createFakeBucket();
+    const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+    await expect(deleteReceipt(bucket, "user-2", key))
+      .rejects.toMatchObject({ code: "RECEIPT_FORBIDDEN", statusCode: 403 });
+    await expect(serveReceipt(bucket, "user-1", key)).resolves.toBeTruthy();
+  });
+
+  it("is idempotent when the object no longer exists", async () => {
+    const bucket = createFakeBucket();
+    const key = receiptKeyFor("user-1", "jpg");
+    await expect(deleteReceipt(bucket, "user-1", key)).resolves.toBeUndefined();
+  });
+
+  it("extracts the storage key from a proxied receipt URL", () => {
+    expect(receiptKeyFromUrl("/api/receipts/user-1/abc.jpg")).toBe("user-1/abc.jpg");
+  });
+
+  it("returns null for URLs outside the receipt proxy", () => {
+    expect(receiptKeyFromUrl("https://evil.example.com/user-2/abc.jpg")).toBeNull();
+    expect(receiptKeyFromUrl("/api/envelopes/user-1/abc.jpg")).toBeNull();
+    expect(receiptKeyFromUrl("/api/receipts/")).toBeNull();
+  });
+
+  it("cleanupReplacedReceipt deletes the old object on replace or clear", async () => {
+    const bucket = createFakeBucket();
+    const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+    await uploadReceipt(bucket, "user-1", makeFile(bytes(PNG_MAGIC), "image/png"));
+
+    await cleanupReplacedReceipt(bucket, "user-1", `/api/receipts/${key}`, null);
+    await expect(serveReceipt(bucket, "user-1", key))
+      .rejects.toMatchObject({ code: "RECEIPT_NOT_FOUND" });
+  });
+
+  it("cleanupReplacedReceipt does nothing when the update omits the receipt field", async () => {
+    const bucket = createFakeBucket();
+    const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+    await cleanupReplacedReceipt(bucket, "user-1", `/api/receipts/${key}`, undefined);
+    await expect(serveReceipt(bucket, "user-1", key)).resolves.toBeTruthy();
+  });
+
+  it("cleanupReplacedReceipt keeps the object when the URL is unchanged", async () => {
+    const bucket = createFakeBucket();
+    const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+    await cleanupReplacedReceipt(bucket, "user-1", `/api/receipts/${key}`, `/api/receipts/${key} `);
+    await expect(serveReceipt(bucket, "user-1", key)).resolves.toBeTruthy();
   });
 });

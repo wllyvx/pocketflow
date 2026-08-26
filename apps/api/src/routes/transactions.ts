@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { eq } from "drizzle-orm";
 import {
   createTransactionSchema,
@@ -17,6 +18,7 @@ import {
   updateTransaction,
 } from "../services/transaction.service";
 import { checkAchievementsForEvent, getUserAchievements } from "../services/achievements/achievement.service";
+import { cleanupReplacedReceipt, receiptKeyFromUrl } from "../services/receipt.service";
 
 type Bindings = {
   DB?: D1Database;
@@ -35,6 +37,28 @@ async function getUser(database: ReturnType<typeof createDb>, auth0Id: string) {
     .where(eq(users.auth0Id, auth0Id))
     .limit(1)
     .then((rows) => rows[0]);
+}
+
+function receiptRefIsOwnedByUser(
+  url: string | null | undefined,
+  userId: string
+): boolean {
+  if (url === undefined || url === null || url.trim() === "") return true;
+  const key = receiptKeyFromUrl(url.trim());
+  return key !== null && key.startsWith(`${userId}/`);
+}
+
+function receiptRefErrorResponse(context: Context<{ Bindings: Bindings; Variables: AuthVariables }>) {
+  return context.json(
+    {
+      success: false,
+      error: {
+        code: "INVALID_INPUT",
+        message: "Receipt image must reference a receipt uploaded by you.",
+      },
+    },
+    400
+  );
 }
 
 // GET / - List transactions
@@ -140,9 +164,12 @@ transactionsRouter.post("/", async (context) => {
     );
   }
 
+  if (!receiptRefIsOwnedByUser(parsed.data.receiptImageUrl, user.id)) {
+    return receiptRefErrorResponse(context);
+  }
+
   try {
     const transaction = await createTransaction(database, user.id, parsed.data);
-    
     // Fetch achievements before check to determine newly unlocked ones
     const achievementsBefore = await getUserAchievements(database, user.id);
     const unlockedBeforeIds = new Set(achievementsBefore.filter((a: any) => a.unlocked).map((a: any) => a.id));
@@ -279,8 +306,28 @@ transactionsRouter.put("/:id", async (context) => {
     );
   }
 
+  if (!receiptRefIsOwnedByUser(parsed.data.receiptImageUrl, user.id)) {
+    return receiptRefErrorResponse(context);
+  }
+
   try {
+    const existing = await getTransactionById(database, user.id, id);
     const updated = await updateTransaction(database, user.id, id, parsed.data);
+
+    // Best-effort cleanup of the replaced/cleared receipt object in storage.
+    if (context.env.RECEIPTS_BUCKET) {
+      try {
+        await cleanupReplacedReceipt(
+          context.env.RECEIPTS_BUCKET,
+          user.id,
+          existing?.receiptImageUrl ?? null,
+          parsed.data.receiptImageUrl
+        );
+      } catch (cleanupError) {
+        console.error("Failed to clean up replaced receipt:", cleanupError);
+      }
+    }
+
     return context.json({
       success: true,
       data: updated,

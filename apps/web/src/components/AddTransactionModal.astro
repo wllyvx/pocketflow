@@ -1,13 +1,17 @@
-<script type="module" is:inline>
-async function fetchDashboard(token) {
-  const res = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
+<script>
+import { validateReceiptFile } from '@pocketflow/shared';
+
+const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8787';
+
+async function fetchDashboard(token: string) {
+  const res = await fetch(`${API_URL}/api/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await res.json();
   if (!data.success) throw new Error('Failed to load dashboard');
   return data;
 }
 
-async function createTransactionApi(token, input) {
-  const res = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/transactions`, {
+async function createTransactionApi(token: string, input: unknown) {
+  const res = await fetch(`${API_URL}/api/transactions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -17,15 +21,15 @@ async function createTransactionApi(token, input) {
   return data;
 }
 
-async function fetchTransactionApi(token, id) {
-  const res = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/transactions/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+async function fetchTransactionApi(token: string, id: string) {
+  const res = await fetch(`${API_URL}/api/transactions/${id}`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await res.json();
   if (!res.ok || !data.success) throw new Error(data.error?.message || 'Failed to load transaction');
   return data.data;
 }
 
-async function updateTransactionApi(token, id, input) {
-  const res = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/transactions/${id}`, {
+async function updateTransactionApi(token: string, id: string, input: unknown) {
+  const res = await fetch(`${API_URL}/api/transactions/${id}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -35,16 +39,40 @@ async function updateTransactionApi(token, id, input) {
   return data;
 }
 
+async function uploadReceiptApi(token: string, file: File) {
+  const uploadData = new FormData();
+  uploadData.append('receipt', file);
+  const res = await fetch(`${API_URL}/api/receipts`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: uploadData,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error?.message || 'Receipt upload failed');
+  return data.data.receiptUrl;
+}
 
-let envelopes = [];
 
-const formatAmount = (value) => value === '' ? '' : new Intl.NumberFormat('id-ID').format(Number(value));
+let envelopes: Array<{ id: string; name: string }> = [];
+
+const formatAmount = (value: number | string) => value === '' ? '' : new Intl.NumberFormat('id-ID').format(Number(value));
 
 function token() {
   return localStorage.getItem('authToken') ?? '';
 }
 
-function renderForm(transaction = null) {
+type TransactionDraft = {
+  id?: string;
+  type?: string;
+  amount?: number;
+  description?: string;
+  date?: string;
+  envelopeId?: string | null;
+  destinationEnvelopeId?: string | null;
+  receiptImageUrl?: string | null;
+};
+
+function renderForm(transaction: TransactionDraft | null = null) {
   const modal = document.getElementById('add-transaction-modal');
   if (!modal) return;
   const contentDiv = modal.querySelector('.modal-content');
@@ -53,7 +81,7 @@ function renderForm(transaction = null) {
   const today = new Date();
   const maxDate = new Date(today);
   maxDate.setFullYear(maxDate.getFullYear() + 1);
-  const dateValue = transaction ? new Date(transaction.date).toISOString().slice(0, 10) : today.toISOString().slice(0, 10);
+  const dateValue = transaction ? new Date(transaction.date ?? '').toISOString().slice(0, 10) : today.toISOString().slice(0, 10);
   const selectedType = transaction?.type ?? 'expense';
   const formHtml = `
     <form id="add-transaction-form" class="space-y-4">
@@ -85,7 +113,8 @@ function renderForm(transaction = null) {
           <option value="">No destination</option>${envelopes.map(e => `<option value="${e.id}" ${transaction?.destinationEnvelopeId === e.id ? 'selected' : ''}>${e.name}</option>`).join('')}
         </select></label>
       <label class="block"><span class="text-sm font-medium text-gray-700">Receipt</span>
-        <input type="file" name="receipt" accept="image/jpeg,image/png" class="mt-1 block w-full text-xs" /></label>
+        <input type="file" name="receipt" accept="image/jpeg,image/png" class="mt-1 block w-full text-xs" />
+        ${transaction?.receiptImageUrl ? `<div class="mt-1 flex items-center gap-2"><span class="text-xs text-[#10B981]">Receipt attached</span><label class="flex items-center gap-1 text-xs text-red-600"><input type="checkbox" name="removeReceipt" /> Remove</label></div>` : ''}</label>
       <p id="transaction-form-error" class="hidden text-xs text-red-600"></p>
       <div class="flex justify-end space-x-2 pt-4">
         <button type="button" class="modal-cancel px-4 py-2 bg-gray-200 rounded">Cancel</button>
@@ -94,19 +123,19 @@ function renderForm(transaction = null) {
     </form>
   `;
   contentDiv.innerHTML = formHtml;
-  const form = document.getElementById('add-transaction-form');
-  const typeInput = form.querySelector('input[name="type"]');
-  const envelopeField = form.querySelector('.envelope-field');
-  const incomeNotice = form.querySelector('.income-notice');
-  const destinationField = form.querySelector('.destination-envelope');
+  const form = document.getElementById('add-transaction-form') as HTMLFormElement;
+  const typeInput = form.querySelector('input[name="type"]') as HTMLInputElement;
+  const envelopeField = form.querySelector('.envelope-field') as HTMLElement;
+  const incomeNotice = form.querySelector('.income-notice') as HTMLElement;
+  const destinationField = form.querySelector('.destination-envelope') as HTMLElement;
   const typeButtons = form.querySelectorAll('.transaction-type');
-  const updateType = (type) => {
+  const updateType = (type: string) => {
     typeInput.value = type;
     envelopeField.classList.toggle('hidden', type === 'income');
     incomeNotice.classList.toggle('hidden', type !== 'income');
     destinationField.classList.toggle('hidden', type !== 'transfer');
     typeButtons.forEach((button) => {
-      const active = button.dataset.type === type;
+      const active = (button as HTMLElement).dataset.type === type;
       button.classList.toggle('bg-white', active);
       button.classList.toggle('text-[#D66D57]', active);
       button.classList.toggle('shadow-sm', active);
@@ -114,18 +143,19 @@ function renderForm(transaction = null) {
       button.setAttribute('aria-pressed', String(active));
     });
   };
-  typeButtons.forEach((button) => button.addEventListener('click', () => updateType(button.dataset.type)));
-  const amountInput = form.querySelector('input[name="amount"]');
+  typeButtons.forEach((button) => { const el = button as HTMLElement; el.addEventListener('click', () => updateType(el.dataset.type ?? '')); });
+  const amountInput = form.querySelector('input[name="amount"]') as HTMLInputElement;
   amountInput.addEventListener('input', () => {
     const digits = amountInput.value.replace(/[^\d]/g, '');
     amountInput.value = digits ? formatAmount(digits) : '';
   });
-  form.querySelector('.modal-close').addEventListener('click', close);
-  form.querySelector('.modal-cancel').addEventListener('click', close);
+  (form.querySelector('.modal-close') as Element).addEventListener('click', close);
+  (form.querySelector('.modal-cancel') as Element).addEventListener('click', close);
   form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = new FormData(form);
       const formError = document.getElementById('transaction-form-error');
+      if (!formError) return;
       formError.classList.add('hidden');
       const type = String(data.get('type'));
       const envelopeId = String(data.get('envelopeId') || '') || null;
@@ -170,7 +200,10 @@ function renderForm(transaction = null) {
         formError.classList.remove('hidden');
         return;
       }
-      const input = {
+      const receiptFile = data.get('receipt');
+      const removeReceipt = (form.querySelector('input[name="removeReceipt"]') as HTMLInputElement | null)?.checked ?? false;
+      /** @type {{ type: string; amount: number; description: string; date: string; envelopeId: string | null; destinationEnvelopeId: string | null; receiptImageUrl?: string | null }} */
+      const input: { type: string; amount: number; description: string; date: string; envelopeId: string | null; destinationEnvelopeId: string | null; receiptImageUrl?: string | null } = {
         type,
         amount,
         description: String(data.get('description')),
@@ -178,34 +211,28 @@ function renderForm(transaction = null) {
         envelopeId,
         destinationEnvelopeId,
       };
-      const receiptFile = data.get('receipt');
       try {
-        const saved = isEdit
-          ? await updateTransactionApi(token(), transaction.id, input)
-          : await createTransactionApi(token(), input);
-        let receiptWarning = '';
-        if (receiptFile && receiptFile instanceof File && receiptFile.size > 0) {
-          if (!['image/jpeg', 'image/png'].includes(receiptFile.type) || receiptFile.size > 5 * 1024 * 1024) {
-            receiptWarning = 'Receipt must be a JPEG or PNG image up to 5MB. The transaction was saved without it.';
-          } else {
-            const uploadData = new FormData();
-            uploadData.append('receipt', receiptFile);
-            const uploadRes = await fetch(`${document.body.dataset.apiUrl ?? 'http://localhost:8787'}/api/receipts`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token()}` },
-              body: uploadData,
-            });
-            const uploadJson = await uploadRes.json();
-            if (!uploadRes.ok || !uploadJson.success) {
-              receiptWarning = uploadJson.error?.message ?? 'Receipt upload failed. The transaction was saved without it.';
-            } else {
-              const savedId = saved.data?.id ?? transaction?.id;
-              if (savedId) await updateTransactionApi(token(), savedId, { receiptImageUrl: uploadJson.data.receiptUrl });
-            }
+        // Upload-first: validate and upload the receipt before touching the
+        // transaction, so a failed upload never corrupts saved data.
+        if (receiptFile instanceof File && receiptFile.size > 0) {
+          const validation = validateReceiptFile({ type: receiptFile.type, size: receiptFile.size });
+          if (!validation.ok) {
+            formError.textContent = validation.message;
+            formError.classList.remove('hidden');
+            return;
           }
+          input.receiptImageUrl = await uploadReceiptApi(token(), receiptFile);
+        } else if (isEdit && removeReceipt) {
+          input.receiptImageUrl = null;
+        } else if (isEdit && transaction?.receiptImageUrl) {
+          input.receiptImageUrl = transaction.receiptImageUrl;
+        }
+        if (isEdit && transaction?.id) {
+          await updateTransactionApi(token(), transaction.id, input);
+        } else {
+          await createTransactionApi(token(), input);
         }
         close();
-        if (receiptWarning) alert(receiptWarning);
       } catch (err) {
         formError.textContent = err instanceof Error ? err.message : String(err);
         formError.classList.remove('hidden');
@@ -213,13 +240,14 @@ function renderForm(transaction = null) {
   });
 }
 
-async function open(event) {
+async function open(event?: Event) {
+  const detailId = (event as CustomEvent | undefined)?.detail?.id as string | undefined;
   const el = document.getElementById('add-transaction-modal');
   if (!el) return;
   try {
     const [dashboard, transaction] = await Promise.all([
       fetchDashboard(token()),
-      event?.detail?.id ? fetchTransactionApi(token(), event.detail.id) : Promise.resolve(null),
+      detailId ? fetchTransactionApi(token(), detailId) : Promise.resolve(null),
     ]);
     envelopes = dashboard.data.envelopes;
     renderForm(transaction);
