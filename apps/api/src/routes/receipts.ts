@@ -1,10 +1,18 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { eq } from "drizzle-orm";
 import type { AuthVariables } from "../middleware/auth";
-import { serveReceipt, uploadReceipt } from "../services/receipt.service";
+import { createDb } from "../db/client";
+import { users } from "../db/schema";
+import {
+  deleteReceiptAndClearReferences,
+  serveReceipt,
+  uploadReceipt,
+} from "../services/receipt.service";
 import { ServiceError } from "../services/transaction.service";
 
 type Bindings = {
+  DB?: D1Database;
   RECEIPTS_BUCKET?: R2Bucket;
 };
 
@@ -66,6 +74,40 @@ receiptsRouter.get("/:key{.*}", async (context) => {
         "Cache-Control": "private",
       },
     });
+  } catch (error) {
+    const handled = toErrorResponse(error);
+    return context.json(handled.body, handled.status);
+  }
+});
+
+receiptsRouter.delete("/:key{.*}", async (context) => {
+  const bucket = context.env.RECEIPTS_BUCKET;
+  if (!bucket) return storageUnavailable(context);
+
+  const database = context.env.DB ? createDb(context.env.DB) : undefined;
+  if (!database) {
+    return context.json({
+      success: false,
+      error: { code: "DATABASE_UNAVAILABLE", message: "D1 Database is not configured." },
+    }, 503);
+  }
+
+  const user = await database
+    .select()
+    .from(users)
+    .where(eq(users.auth0Id, context.get("auth0Id")))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!user) {
+    return context.json({
+      success: false,
+      error: { code: "USER_NOT_FOUND", message: "User profile has not been provisioned." },
+    }, 404);
+  }
+
+  try {
+    await deleteReceiptAndClearReferences(bucket, database, user.id, context.req.param("key") ?? "");
+    return context.json({ success: true, data: { deleted: true } });
   } catch (error) {
     const handled = toErrorResponse(error);
     return context.json(handled.body, handled.status);

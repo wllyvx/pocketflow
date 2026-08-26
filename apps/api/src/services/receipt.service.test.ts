@@ -4,6 +4,7 @@ import {
   MAX_RECEIPT_SIZE_BYTES,
   cleanupReplacedReceipt,
   deleteReceipt,
+  deleteReceiptAndClearReferences,
   receiptKeyFor,
   receiptKeyFromUrl,
   serveReceipt,
@@ -148,5 +149,47 @@ describe("FR-07 receipt storage contract", () => {
 
     await cleanupReplacedReceipt(bucket, "user-1", `/api/receipts/${key}`, `/api/receipts/${key} `);
     await expect(serveReceipt(bucket, "user-1", key)).resolves.toBeTruthy();
+  });
+
+  describe("deleteReceiptAndClearReferences", () => {
+    function createFakeDb() {
+      const calls: { set: unknown; where: unknown }[] = [];
+      return {
+        calls,
+        update: () => ({
+          set: (set: unknown) => ({
+            where: (where: unknown) => {
+              calls.push({ set, where });
+              return Promise.resolve(undefined);
+            },
+          }),
+        }),
+      } as any;
+    }
+
+    it("deletes the object and clears the receipt reference on matching transactions", async () => {
+      const bucket = createFakeBucket();
+      const db = createFakeDb();
+      const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+      await deleteReceiptAndClearReferences(bucket, db, "user-1", key);
+
+      await expect(serveReceipt(bucket, "user-1", key))
+        .rejects.toMatchObject({ code: "RECEIPT_NOT_FOUND" });
+      expect(db.calls).toHaveLength(1);
+      expect(db.calls[0].set).toEqual({ receiptUrl: null });
+      expect(db.calls[0].where).toBeTruthy();
+    });
+
+    it("refuses to delete a receipt owned by another user and touches no transactions", async () => {
+      const bucket = createFakeBucket();
+      const db = createFakeDb();
+      const { key } = await uploadReceipt(bucket, "user-1", makeFile(bytes(JPEG_MAGIC), "image/jpeg"));
+
+      await expect(deleteReceiptAndClearReferences(bucket, db, "user-2", key))
+        .rejects.toMatchObject({ code: "RECEIPT_FORBIDDEN", statusCode: 403 });
+      await expect(serveReceipt(bucket, "user-1", key)).resolves.toBeTruthy();
+      expect(db.calls).toHaveLength(0);
+    });
   });
 });

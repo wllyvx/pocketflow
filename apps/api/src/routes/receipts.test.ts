@@ -63,3 +63,78 @@ describe("FR-07 receipts routes (wiring)", () => {
     expect(body.error.code).toBe("UNSUPPORTED_FILE_TYPE");
   });
 });
+
+describe("FR-07 receipt deletion route", () => {
+  function createFakeD1() {
+    const selects: { sql: string }[] = [];
+    const updates: { sql: string; args: unknown[] }[] = [];
+    return {
+      selects,
+      updates,
+      prepare(sql: string) {
+        const statement = {
+          args: [] as unknown[],
+          bind(...args: unknown[]) {
+            this.args = args;
+            return this;
+          },
+          async all() {
+            selects.push({ sql });
+            return { results: [{ id: "user-1" }] };
+          },
+          async run() {
+            updates.push({ sql, args: this.args });
+            return { success: true };
+          },
+          async raw() {
+            selects.push({ sql });
+            return [["user-1"]];
+          },
+        };
+        return statement;
+      },
+    } as unknown as D1Database & {
+      selects: { sql: string }[];
+      updates: { sql: string; args: unknown[] }[];
+    };
+  }
+
+  it("deletes the object and clears transaction references for the owner", async () => {
+    const bucket = createFakeBucket();
+    const app = createApp(bucket);
+
+    const form = new FormData();
+    form.append("receipt", new File([bytes(JPEG_MAGIC) as BlobPart], "receipt.jpg", { type: "image/jpeg" }));
+    const upload = await app.request("/api/receipts", { method: "POST", body: form }, { RECEIPTS_BUCKET: bucket });
+    const { receiptUrl } = ((await upload.json()) as { data: { key: string; receiptUrl: string } }).data;
+
+    const db = createFakeD1();
+    const response = await app.request(receiptUrl, { method: "DELETE" }, {
+      RECEIPTS_BUCKET: bucket,
+      DB: db,
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { success: boolean };
+    expect(body.success).toBe(true);
+    await expect(app.request(receiptUrl, {}, { RECEIPTS_BUCKET: bucket })).resolves.toMatchObject({ status: 404 });
+    expect(db.updates).toHaveLength(1);
+    expect(db.updates[0].sql).toContain("receipt_url");
+  });
+
+  it("returns 403 when deleting a receipt key belonging to another user", async () => {
+    const bucket = createFakeBucket();
+    const app = createApp(bucket);
+
+    const db = createFakeD1();
+    const response = await app.request("/api/receipts/user-2/some.jpg", { method: "DELETE" }, {
+      RECEIPTS_BUCKET: bucket,
+      DB: db,
+    });
+
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("RECEIPT_FORBIDDEN");
+    expect(db.updates).toHaveLength(0);
+  });
+});

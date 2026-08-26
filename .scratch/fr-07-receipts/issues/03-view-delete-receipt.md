@@ -4,10 +4,10 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Detail transaksi dengan struk menampilkan thumbnail/link
-- [ ] Klik membuka modal menampilkan gambar via URL proxy
-- [ ] Detail transaksi tanpa struk tidak menampilkan elemen struk sama sekali
-- [ ] Hapus struk menghilangkan objek dari storage dan referensi di transaksi
-- [ ] Hapus gagal jika mencoba menghapus struk milik user lain (ownership tervalidasi)
+- [x] Detail transaksi dengan struk menampilkan thumbnail/link
+- [x] Klik membuka modal menampilkan gambar via URL proxy
+- [x] Detail transaksi tanpa struk tidak menampilkan elemen struk sama sekali
+- [x] Hapus struk menghilangkan objek dari storage dan referensi di transaksi
+- [x] Hapus gagal jika mencoba menghapus struk milik user lain (ownership tervalidasi)

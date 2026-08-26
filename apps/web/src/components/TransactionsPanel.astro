@@ -61,6 +61,7 @@ function renderTransactions(items) {
         <p class="text-xs text-[#9AA4AE]">${tx.type} • ${new Date(tx.date).toLocaleDateString('id-ID')} • <span class="text-[#5C8FC5]">${escapeHtml(tx.envelopeName || 'No envelope')}</span></p>
       </div>
       ${envelopeById.get(tx.envelopeId)?.currentAmount < 0 ? '<span class="mr-2 rounded bg-[#FDE8E2] px-1.5 py-1 text-[9px] font-bold text-[#C6533D]">Over budget</span>' : ''}
+      ${tx.receiptImageUrl ? `<button type="button" class="mr-2 flex items-center gap-1 text-xs text-[#5C8FC5]" data-action="view-receipt" data-url="${escapeHtml(tx.receiptImageUrl)}" aria-label="View receipt">🧾 Receipt</button>` : ''}
       <div class="mr-2 text-xs font-bold" style="color: ${tx.type === 'income' ? '#10B981' : tx.type === 'transfer' ? '#6366F1' : '#D66D57'}">${formatAmount(tx)}</div>
       <button class="text-xs text-coral-600 mr-2" data-id="${tx.id}" data-action="edit">Edit</button>
       <button class="text-xs text-red-600" data-id="${tx.id}" data-action="delete">Delete</button>
@@ -74,8 +75,73 @@ function renderTransactions(items) {
       btn.addEventListener('click', () => confirmDelete(id));
     } else if (action === 'edit') {
       btn.addEventListener('click', () => document.dispatchEvent(new CustomEvent('pocketflow:edit-transaction', { detail: { id } })));
+    } else if (action === 'view-receipt') {
+      btn.addEventListener('click', () => openReceiptModal(btn.getAttribute('data-url')));
     }
   });
+}
+
+let receiptObjectUrl = null;
+
+function closeReceiptModal() {
+  const modal = document.getElementById('receipt-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+  const img = document.getElementById('receipt-modal-image');
+  if (img) { img.src = ''; img.dataset.url = ''; }
+  if (receiptObjectUrl) { URL.revokeObjectURL(receiptObjectUrl); receiptObjectUrl = null; }
+  const error = document.getElementById('receipt-modal-error');
+  if (error) { error.classList.add('hidden'); error.textContent = ''; }
+}
+
+async function openReceiptModal(receiptUrl) {
+  const modal = document.getElementById('receipt-modal');
+  const img = document.getElementById('receipt-modal-image');
+  const error = document.getElementById('receipt-modal-error');
+  if (!modal || !img || !error) return;
+  modal.style.display = 'grid';
+  modal.setAttribute('aria-hidden', 'false');
+  error.classList.add('hidden');
+  img.dataset.url = '';
+  try {
+    const res = await fetch(`${getApiUrl()}${receiptUrl}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('authToken') ?? ''}` }
+    });
+    if (!res.ok) throw new Error('Failed to load receipt image.');
+    const blob = await res.blob();
+    if (receiptObjectUrl) URL.revokeObjectURL(receiptObjectUrl);
+    receiptObjectUrl = URL.createObjectURL(blob);
+    img.src = receiptObjectUrl;
+    img.dataset.url = receiptUrl;
+  } catch (err) {
+    img.src = '';
+    error.textContent = err instanceof Error ? err.message : String(err);
+    error.classList.remove('hidden');
+  }
+}
+
+async function handleDeleteReceipt() {
+  const img = document.getElementById('receipt-modal-image');
+  const url = img?.dataset.url;
+  if (!url) return;
+  if (!confirm('Delete this receipt? The transaction itself will be kept.')) return;
+  const error = document.getElementById('receipt-modal-error');
+  try {
+    const res = await fetch(`${getApiUrl()}${url}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${localStorage.getItem('authToken') ?? ''}` }
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error?.message || 'Failed to delete receipt.');
+    closeReceiptModal();
+    document.dispatchEvent(new CustomEvent('pocketflow:refresh-data'));
+  } catch (err) {
+    if (error) {
+      error.textContent = err instanceof Error ? err.message : String(err);
+      error.classList.remove('hidden');
+    }
+  }
 }
 
 function renderPagination(pagination) {
@@ -154,6 +220,13 @@ window.addEventListener('DOMContentLoaded', () => {
   // stale localStorage token before AuthGate has renewed the session.
   document.addEventListener('pocketflow:refresh-data', refreshPanel);
   document.addEventListener('pocketflow:dashboard-ready', refreshPanel);
+
+  const modal = document.getElementById('receipt-modal');
+  modal?.querySelector('[data-receipt-close]')?.addEventListener('click', closeReceiptModal);
+  modal?.querySelector('[data-receipt-delete]')?.addEventListener('click', handleDeleteReceipt);
+  modal?.addEventListener('click', (event) => {
+    if (event.target === modal) closeReceiptModal();
+  });
 });
 </script>
 
@@ -165,3 +238,18 @@ window.addEventListener('DOMContentLoaded', () => {
   <div id="transactions-list"></div>
   <div id="transactions-pagination" class="flex justify-between items-center mt-2 text-xs"></div>
 </section>
+
+<div id="receipt-modal" class="fixed inset-0 z-30 hidden place-items-center bg-[rgba(25,39,53,.4)] p-5" aria-hidden="true">
+  <div class="max-h-[90vh] w-full max-w-[410px] overflow-y-auto rounded-[10px] bg-white p-[29px] shadow-[0_20px_60px_rgba(23,37,51,.22)]" role="dialog" aria-modal="true" aria-label="Receipt">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="font-display text-xl font-semibold text-[#213043]">Receipt</h2>
+      <button type="button" data-receipt-close class="border-0 bg-transparent text-[25px] text-[#82909D]" aria-label="Close dialog">×</button>
+    </div>
+    <p id="receipt-modal-error" class="hidden mb-2 text-xs text-red-600"></p>
+    <img id="receipt-modal-image" alt="Receipt image" class="mx-auto max-h-[60vh] w-auto rounded" />
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" data-receipt-close class="px-4 py-2 bg-gray-200 rounded text-sm">Close</button>
+      <button type="button" data-receipt-delete class="px-4 py-2 bg-red-600 text-white rounded text-sm">Delete receipt</button>
+    </div>
+  </div>
+</div>

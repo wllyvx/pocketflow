@@ -1,3 +1,6 @@
+import { and, eq } from "drizzle-orm";
+import type { createDb } from "../db/client";
+import { transactions } from "../db/schema";
 import { ServiceError } from "./transaction.service";
 
 export const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
@@ -164,6 +167,44 @@ export async function deleteReceipt(
       403
     );
   }
+
+  await bucket.delete(key);
+}
+
+type Database = ReturnType<typeof createDb>;
+
+/**
+ * Deletes a receipt object owned by the requesting user and clears the
+ * receipt reference from any of their transactions pointing at it. The
+ * transaction rows themselves are never deleted.
+ */
+export async function deleteReceiptAndClearReferences(
+  bucket: R2Bucket,
+  db: Database,
+  userId: string,
+  key: string
+): Promise<void> {
+  // Ownership boundary first: never touch data when the key is foreign.
+  // See docs/adr/0001-receipt-key-isolation-literal-keys.md
+  if (!key.startsWith(`${userId}/`)) {
+    throw new ServiceError(
+      "RECEIPT_FORBIDDEN",
+      "You do not have access to this receipt.",
+      403
+    );
+  }
+
+  // Clear references before removing the object so a failed storage delete
+  // leaves an orphan object rather than a dangling receipt URL.
+  await db
+    .update(transactions)
+    .set({ receiptUrl: null })
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.receiptUrl, `/api/receipts/${key}`)
+      )
+    );
 
   await bucket.delete(key);
 }
