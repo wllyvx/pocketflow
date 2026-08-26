@@ -140,4 +140,4 @@ Mengacu ke PRD.md dengan penyesuaian skala solo-project di tahap awal:
 
 - Formula pasti "Financial Health Score" — perlu difinalisasi sebelum implementasi FR-04.
 - Daftar final achievement dan kriteria unlock-nya.
-- Kebijakan retensi/penghapusan receipt image saat akun dihapus.
+- ~~Kebijakan retensi/penghapusan receipt image saat akun dihapus~~ — **terjawab (FR-07): hard delete langsung.** Receipt objects dihapus dari R2 segera ketika receipt dilepas dari transaksi atau ketika transaksi dihapus; tidak ada soft-delete/retensi periodik. Jika suatu saat dibutuhkan cascade saat penghapusan akun, sebuah tabel mapping D1 dapat ditambahkan tanpa melemahkan prefix check (lihat ADR-0001).

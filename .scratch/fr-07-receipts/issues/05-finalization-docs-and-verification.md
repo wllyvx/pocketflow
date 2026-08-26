@@ -4,8 +4,8 @@
 
 **Blocked by:** 01, 02, 03, 04
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] DATABASE.md, API.md, REQUIREMENTS.md §6, ROADMAP.md diperbarui sesuai keputusan spec
-- [ ] Lint, typecheck, dan build lulus di seluruh workspace
+- [x] DATABASE.md, API.md, REQUIREMENTS.md §6, ROADMAP.md diperbarui sesuai keputusan spec
+- [x] Lint (tidak ada script lint di workspace), typecheck, dan build lulus di seluruh workspace
 - [ ] Uji manual end-to-end dengan dev account: tambah transaksi + struk, lihat modal, ganti struk, hapus struk, hapus transaksi (objek bersih)

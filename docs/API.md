@@ -297,7 +297,7 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
       "destinationEnvelopeId": "envelope-uuid-789", // Required for transfer (destination), optional otherwise
       "sourceAccountId": "account-uuid-456", // Optional in MVP (Phase 1)
       "destinationAccountId": "account-uuid-789", // Optional in MVP (Phase 1)
-      "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg" // Optional
+      "receiptImageUrl": "/api/receipts/user-uuid-abc/receipt-uuid-xyz.jpg" // Optional
     }
     ```
 *   **Important Notes:**
@@ -318,7 +318,7 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
         "destinationEnvelopeId": null,
         "sourceAccountId": null,
         "destinationAccountId": null,
-        "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
+        "receiptImageUrl": "/api/receipts/user-uuid-abc/receipt-uuid-xyz.jpg",
         "userId": "user-uuid-abc",
         "createdAt": "2023-10-27T14:35:00Z"
       }
@@ -361,7 +361,7 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
           "destinationEnvelopeId": null,
           "sourceAccountId": null,
           "destinationAccountId": null,
-          "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
+          "receiptImageUrl": "/api/receipts/user-uuid-abc/receipt-uuid-xyz.jpg",
           "envelopeName": "Groceries",
           "envelopeColorHex": "#4CAF50",
           "userId": "user-uuid-abc",
@@ -419,7 +419,7 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
         "destinationEnvelopeId": null,
         "sourceAccountId": null,
         "destinationAccountId": null,
-        "receiptImageUrl": "https://r2.cloudflarestorage.com/receipts/receipt-uuid-xyz.jpg",
+        "receiptImageUrl": "/api/receipts/user-uuid-abc/receipt-uuid-xyz.jpg",
         "envelopeName": "Groceries",
         "envelopeColorHex": "#4CAF50",
         "userId": "user-uuid-abc",
@@ -497,6 +497,67 @@ Returns `200 { "success": true, "message": "Envelope and associated transactions
     *   `401 Unauthorized`: Missing or invalid authentication token.
     *   `404 Not Found`: Transaction not found or does not belong to the user.
     *   `500 Internal Server Error`: An unexpected server error occurred.
+    *   Note: deleting a transaction that has an attached receipt also deletes the receipt object from R2 (no orphaned files).
+
+### Receipts
+
+Receipts are stored in Cloudflare R2 under per-user object keys of the shape `<userId>/<uuid>.<ext>`. The database column `transactions.receiptImageUrl` stores the **authenticated proxy path** `/api/receipts/<key>` (not the raw key, not a public URL); images are only accessible through the authenticated proxy below. The API returns this same proxy path as `receiptImageUrl` on transactions.
+
+#### POST /api/receipts
+
+*   **Description:** Uploads a receipt image (JPEG/PNG, max 5MB) to R2 and returns its key plus the authenticated proxy URL. Keys are generated server-side; the client never chooses them.
+*   **Auth Level:** Authenticated User
+*   **Request Body:** `multipart/form-data` with a single field `receipt` containing the image file. Client-side validation (`image/jpeg`, `image/png`, ≤ 5MB) runs before upload; the server validates again.
+*   **Response Body (201 Created):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "key": "user-uuid-abc/9f1c...-e2a3.jpg",
+        "receiptUrl": "/api/receipts/user-uuid-abc/9f1c...-e2a3.jpg"
+      }
+    }
+    ```
+*   **Status Codes:**
+    *   `201 Created`: Receipt uploaded successfully.
+    *   `400 Bad Request`: No file provided in the `receipt` field, or invalid file type/size.
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `413 Payload Too Large`: File exceeds 5MB.
+    *   `503 Service Unavailable`: R2 bucket is not configured.
+
+#### GET /api/receipts/:key
+
+*   **Description:** Authenticated proxy that streams a receipt image from R2 after verifying ownership. Ownership check: the requested key must start with `<userId>/`, where `userId` always comes from the auth token — never from the client. This endpoint serves binary image data (`Content-Type` of the stored object, `Cache-Control: private`).
+*   **Auth Level:** Authenticated User (owner of the key)
+*   **Path Parameters:**
+    *   `key` (string, required): The full R2 object key, including the user prefix (e.g. `user-uuid-abc/9f1c...-e2a3.jpg`). This is the value returned as `receiptUrl` by the upload endpoint and on transactions.
+*   **Response Body:** Binary image stream (JPEG or PNG).
+*   **Status Codes:**
+    *   `200 OK`: Image served.
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `403 Forbidden`: Key does not start with the authenticated user's `<userId>/` prefix (covers malformed keys and other users' keys — the code returns a single `RECEIPT_FORBIDDEN` error for both).
+    *   `404 Not Found`: Object does not exist in R2.
+    *   `503 Service Unavailable`: R2 bucket is not configured.
+
+#### DELETE /api/receipts/:key
+
+*   **Description:** Deletes a receipt object from R2 and clears `receiptImageUrl` on any transaction referencing it. Used by "Remove receipt" in the transaction UI (the transaction itself is kept). Deleting a whole transaction also cleans up its receipt via the same service path.
+*   **Auth Level:** Authenticated User (owner of the key)
+*   **Path Parameters:**
+    *   `key` (string, required): The full R2 object key, same as above.
+*   **Response Body (200 OK):**
+    ```json
+    {
+      "success": true,
+      "data": { "deleted": true }
+    }
+    ```
+*   **Status Codes:**
+    *   `200 OK`: Receipt deleted and references cleared.
+    *   `401 Unauthorized`: Missing or invalid authentication token.
+    *   `403 Forbidden`: Key does not start with the authenticated user's `<userId>/` prefix (covers malformed keys and other users' keys — single `RECEIPT_FORBIDDEN` error for both).
+    *   `404 Not Found`: User profile not provisioned or receipt not found.
+    *   `503 Service Unavailable`: R2 bucket or D1 database is not configured.
 
 ### Plaid Integration
 

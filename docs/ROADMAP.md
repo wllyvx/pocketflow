@@ -25,7 +25,7 @@ Tujuan: aplikasi yang benar-benar bisa dipakai untuk mencatat keuangan manual se
 
 **1b. Transaksi Manual**
 - [ ] CRUD Transaksi manual (FR-02) — income/expense/transfer.
-- [ ] Upload receipt ke R2 (FR-07), attach ke transaksi.
+- [x] Upload receipt ke R2 (FR-07), attach ke transaksi.
 - [ ] Halaman daftar & form tambah/edit transaksi (USER_FLOW.md §3).
 
 **1c. Dashboard**

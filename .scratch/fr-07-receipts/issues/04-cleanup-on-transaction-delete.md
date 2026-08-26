@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Hapus transaksi berikut struknya menghapus objek R2 terkait
 - [x] Hapus transaksi tanpa struk tetap berjalan normal tanpa efek samping storage

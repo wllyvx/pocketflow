@@ -66,7 +66,7 @@ erDiagram
         String type "e.g., 'income', 'expense', 'transfer'"
         DateTime date "Date of the transaction"
         Boolean isManual "True if manually entered, false if from Plaid"
-        String receiptImageUrl "Nullable, URL to receipt in R2"
+        String receiptImageUrl "Nullable, proxy path /api/receipts/<R2 object key> (bukan URL publik)"
         DateTime createdAt
         DateTime updatedAt
     }
@@ -171,7 +171,7 @@ Records individual financial transactions, whether imported from Plaid or manual
 | `type` | String | | Type of transaction (`income`, `expense`, `transfer`). |
 | `date` | DateTime | | The date the transaction occurred. |
 | `isManual` | Boolean | | True if the transaction was manually entered, false if imported from Plaid. |
-| `receiptImageUrl` | String | Nullable | URL to the uploaded receipt image in Cloudflare R2. |
+| `receiptImageUrl` | String | Nullable | Menyimpan path proxy authenticated `/api/receipts/<key>`, di mana `<key>` adalah object key receipt di Cloudflare R2 berbentuk `<userId>/<uuid>.<ext>` — bukan URL publik/signed. Gambar hanya dapat diakses lewat `GET /api/receipts/:key`; penghapusan transaksi terkait membersihkan objek R2-nya. |
 | `createdAt` | DateTime | Default: NOW | Timestamp when the transaction record was created. |
 | `updatedAt` | DateTime | Default: NOW, On Update: NOW | Timestamp of the last update to the transaction record. |
 
@@ -276,7 +276,7 @@ model Transaction {
   type                  String     // 'income', 'expense', 'transfer'
   date                  DateTime
   isManual              Boolean    @map("is_manual")
-  receiptImageUrl       String?    @map("receipt_image_url") // URL to Cloudflare R2 object
+  receiptImageUrl       String?    @map("receipt_image_url") // Authenticated proxy path "/api/receipts/<userId>/<uuid>.<ext>", not a public URL
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 
