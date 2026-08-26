@@ -55,6 +55,7 @@ app.route("/api/transactions", transactionsRouter);
 app.route("/api/envelopes", envelopesRouter);
 app.route("/api/achievements", achievementsRouter);
 app.route("/api/insights", insightsRouter);
+app.route("/api/receipts", receiptsRouter);
 
 app.get("/api/users/me", async (context) => {
   const now = new Date();

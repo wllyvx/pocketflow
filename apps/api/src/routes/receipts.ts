@@ -1,24 +1,75 @@
-// Receipt upload stub endpoint – returns a mock URL for the uploaded file
 import { Hono } from "hono";
-import type { Bindings } from "../index"; // reuse Bindings definition
+import type { Context } from "hono";
+import type { AuthVariables } from "../middleware/auth";
+import { serveReceipt, uploadReceipt } from "../services/receipt.service";
+import { ServiceError } from "../services/transaction.service";
 
-const router = new Hono<{ Bindings: Bindings }>();
+type Bindings = {
+  RECEIPTS_BUCKET?: R2Bucket;
+};
 
-router.post("/", async (c) => {
-  const contentType = c.req.header("Content-Type") ?? "";
-  if (!contentType.startsWith("multipart/form-data")) {
-    return c.json({ success: false, error: { code: "INVALID_CONTENT_TYPE", message: "Expected multipart/form-data" } }, 400);
+type RouterEnv = { Bindings: Bindings; Variables: AuthVariables };
+
+const receiptsRouter = new Hono<RouterEnv>();
+
+function storageUnavailable(context: Context<RouterEnv>) {
+  return context.json({
+    success: false,
+    error: { code: "STORAGE_UNAVAILABLE", message: "Receipt storage is not configured." },
+  }, 503);
+}
+
+function toErrorResponse(error: unknown) {
+  if (error instanceof ServiceError) {
+    return {
+      status: error.statusCode as 400 | 403 | 404 | 413,
+      body: { success: false, error: { code: error.code, message: error.message } },
+    };
   }
-  const form = await c.req.formData();
-  const file = form.get("receipt") as File | null;
-  if (!file) {
-    return c.json({ success: false, error: { code: "NO_FILE", message: "No file provided" } }, 400);
+  throw error;
+}
+
+receiptsRouter.post("/", async (context) => {
+  const bucket = context.env.RECEIPTS_BUCKET;
+  if (!bucket) return storageUnavailable(context);
+
+  const form = await context.req.formData().catch(() => null);
+  const file = form?.get("receipt");
+  if (!(file instanceof File)) {
+    return context.json({
+      success: false,
+      error: { code: "NO_FILE", message: 'Provide a receipt image in the "receipt" field of a multipart form.' },
+    }, 400);
   }
-  // In MVP we just generate a placeholder URL – in a real implementation this would upload to R2
-  const mockUrl = `https://example.com/${file.name}`;
-  // Optionally, you could store the file in R2 if the bucket is configured:
-  // if (c.env.RECEIPTS_BUCKET) { await c.env.RECEIPTS_BUCKET.put(file.name, file.stream()); }
-  return c.json({ success: true, data: { receiptUrl: mockUrl } });
+
+  try {
+    const uploaded = await uploadReceipt(bucket, context.get("userId"), file);
+    return context.json({
+      success: true,
+      data: { key: uploaded.key, receiptUrl: `/api/receipts/${uploaded.key}` },
+    }, 201);
+  } catch (error) {
+    const handled = toErrorResponse(error);
+    return context.json(handled.body, handled.status);
+  }
 });
 
-export default router;
+receiptsRouter.get("/:key{.*}", async (context) => {
+  const bucket = context.env.RECEIPTS_BUCKET;
+  if (!bucket) return storageUnavailable(context);
+
+  try {
+    const receipt = await serveReceipt(bucket, context.get("userId"), context.req.param("key") ?? "");
+    return new Response(receipt.body, {
+      headers: {
+        "Content-Type": receipt.contentType,
+        "Cache-Control": "private",
+      },
+    });
+  } catch (error) {
+    const handled = toErrorResponse(error);
+    return context.json(handled.body, handled.status);
+  }
+});
+
+export default receiptsRouter;

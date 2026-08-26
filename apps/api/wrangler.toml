@@ -13,7 +13,8 @@ binding = "DB"
 database_name = "pocketflow-db"
 database_id = "d766ecf3-4003-4990-b78e-d7f5f983c6ab"
 
-# Configure R2 after creating the bucket.
-# [[r2_buckets]]
-# binding = "RECEIPTS_BUCKET"
-# bucket_name = "pocketflow-receipts"
+# Local dev uses wrangler's built-in R2 simulation (no account needed);
+# create the real bucket before deploying.
+[[r2_buckets]]
+binding = "RECEIPTS_BUCKET"
+bucket_name = "pocketflow-receipts"
