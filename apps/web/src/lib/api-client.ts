@@ -36,7 +36,12 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
     },
   });
 
-  const body = await response.json() as T | ApiError;
+  let body: T | ApiError;
+  try {
+    body = await response.json() as T | ApiError;
+  } catch {
+    throw new Error(`Server merespons dengan format tak terduga (status ${response.status}).`);
+  }
   if (!response.ok || (body as ApiError).success === false) {
     const message = (body as ApiError).error?.message ?? `API request failed with status ${response.status}`;
     throw new Error(message);

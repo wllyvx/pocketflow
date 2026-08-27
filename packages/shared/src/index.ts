@@ -73,7 +73,10 @@ export const createTransactionSchema = z
     receiptImageUrl: z
       .string()
       .trim()
-      .url("Receipt image URL must be a valid URL")
+      .refine(
+        (value) => value.startsWith("/api/receipts/") || /^https?:\/\//.test(value),
+        { message: "Receipt image URL must be a valid proxy URL." }
+      )
       .nullable()
       .optional()
       .or(z.literal("")),
@@ -145,7 +148,10 @@ export const updateTransactionSchema = z
     receiptImageUrl: z
       .string()
       .trim()
-      .url("Receipt image URL must be a valid URL")
+      .refine(
+        (value) => value.startsWith("/api/receipts/") || /^https?:\/\//.test(value),
+        { message: "Receipt image URL must be a valid proxy URL." }
+      )
       .nullable()
       .optional()
       .or(z.literal("")),

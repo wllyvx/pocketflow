@@ -47,13 +47,21 @@
     if (/user_exists|already exists|email.*(registered|exists)|duplicate/i.test(message)) {
       return 'Email sudah terdaftar. Silakan masuk menggunakan akun tersebut.';
     }
+    if (/login_required|consent_required/i.test(message)) {
+      return 'Sesi Anda telah berakhir. Silakan masuk kembali.';
+    }
     return message || 'Terjadi kesalahan. Silakan coba lagi.';
   };
 
   const showError = (value: unknown) => {
     if (!error) return;
-    error.textContent = getUserFacingError(value);
+    const text = getUserFacingError(value);
+    error.textContent = text;
     error.classList.remove('hidden');
+    if (/login_required|consent_required/i.test(value instanceof Error ? value.message : '')) {
+      if (message) message.textContent = 'Log in to connect your PocketFlow account.';
+      loginButton?.classList.remove('hidden');
+    }
   };
 
   const clearError = () => error?.classList.add('hidden');
@@ -96,7 +104,19 @@
       return;
     }
 
-    const token = await auth.getTokenSilently();
+    let token: string;
+    try {
+      token = await auth.getTokenSilently();
+    } catch (value) {
+      const reason = value instanceof Error ? value.message : '';
+      if (/login_required|consent_required/i.test(reason)) {
+        localStorage.removeItem('authToken');
+        if (message) message.textContent = 'Sesi Anda telah berakhir. Silakan masuk kembali.';
+        loginButton?.classList.remove('hidden');
+        return;
+      }
+      throw value;
+    }
     localStorage.setItem('authToken', token);
     const user = await getCurrentUser(token);
     const onboarding = await getOnboardingStatus(token);

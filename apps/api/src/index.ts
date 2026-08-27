@@ -19,13 +19,26 @@ export type Bindings = {
   RECEIPTS_BUCKET?: R2Bucket;
 };
 
-function isUniqueConstraintError(error: unknown) {
-  return error instanceof Error && /unique constraint|UNIQUE constraint/i.test(error.message);
+function isUniqueConstraintError(error: unknown): boolean {
+  let current: unknown = error;
+  while (current instanceof Error) {
+    if (/unique constraint|UNIQUE constraint/i.test(current.message)) return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 const app = new Hono<{ Bindings: Bindings; Variables: AuthVariables }>();
 
 app.get("/health", (context) => context.json({ success: true, data: { service: "api", status: "ok" } }));
+
+app.onError((error, context) => {
+  console.error("[unhandled]", error);
+  return context.json({
+    success: false,
+    error: { code: "INTERNAL_ERROR", message: "Terjadi kesalahan pada server. Silakan coba lagi." },
+  }, 500);
+});
 
 app.use("/api/*", cors({
   origin: (origin, context) => {

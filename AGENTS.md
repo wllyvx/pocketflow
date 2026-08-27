@@ -74,21 +74,6 @@ Whenever a new decision is made that diverges from the documents (e.g., the Fina
 - Use a cheaper/lighter model for executing an already-approved plan — implementation of well-specified tasks doesn't need the top-tier model, and this keeps cost down across many sub-agent calls.
 - After completing features (large or small), always run commands like lint, type check, and `astro build` to check code quality.
 
-## 9. Progress Tracking (per FR)
-
-Progress for each functional requirement (FR) is tracked in `progress/FR-XX/` (e.g. `progress/FR-01/`, `progress/FR-02/`), separate from `docs/`, which holds the stable source-of-truth specs. Each FR folder may contain:
-
-- `implementation_plan.md` — the approach, decisions, and work breakdown agreed on during Planning Mode.
-- `task.md` — the granular checklist tracked and updated during Change/Edit Mode.
-
-**Rules the agent must follow:**
-
-- At the start of every session touching an FR, check whether `progress/FR-XX/implementation_plan.md` and `progress/FR-XX/task.md` already exist.
-- **If they exist:** read them first for context (current status, what's done, what's pending, prior decisions), and keep them updated as work progresses (check off completed items, add newly discovered tasks, note blockers).
-- **If they don't exist:** do **not** create them automatically. Their absence means that FR hasn't been scoped/started yet by the user — surface this to the user instead of assuming or generating a plan/todo unprompted.
-- The user owns creation of `implementation_plan.md` and `task.md`. The agent's role is limited to reading and updating existing files, never initializing new ones on its own.
-- Never let `task.md` duplicate `docs/ROADMAP.md` — `docs/ROADMAP.md` stays at the phase/roadmap level; `progress/FR-XX/` is the technical execution breakdown of a single roadmap item.
-
 ## 10. Tech Stack Summary (final, from `docs/ARCHITECTURE.md`)
 
 - **Frontend:** Astro.js
